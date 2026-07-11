@@ -1,0 +1,58 @@
+services:
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      DOMAIN: ${DOMAIN:-localhost}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    depends_on:
+      - frontend
+      - backend
+
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    restart: unless-stopped
+    expose:
+      - "8000"
+    environment:
+      DATABASE_PATH: /data/oda-knit.db
+      ADMIN_USERNAME: odaknits
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-}
+      CONTACT_EMAIL_TO: ${CONTACT_EMAIL_TO:-oda.hennissen@gmail.com}
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+      SMTP_FROM: ${SMTP_FROM:-}
+      INSTAGRAM_ACCESS_TOKEN: ${INSTAGRAM_ACCESS_TOKEN:-}
+      INSTAGRAM_POST_LIMIT: ${INSTAGRAM_POST_LIMIT:-8}
+    volumes:
+      - oda-knit-data:/data
+
+  frontend:
+    build:
+      context: .
+      dockerfile: frontend/Dockerfile
+      target: prod
+      args:
+        VITE_API_URL: ""
+    restart: unless-stopped
+    environment:
+      ALLOWED_HOSTS: ${DOMAIN:-localhost}
+    expose:
+      - "4173"
+    depends_on:
+      - backend
+
+volumes:
+  oda-knit-data:
+  caddy-data:
+  caddy-config:

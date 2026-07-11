@@ -1,0 +1,15 @@
+  http://odaknits.no, http://www.odaknits.no {
+	encode zstd gzip
+
+	reverse_proxy /api/* backend:8000
+	reverse_proxy frontend:4173 {
+		header_up Host localhost
+	}
+}
+
+  https://odaknits.no, https://www.odaknits.no {
+  	encode zstd gzip
+
+  	reverse_proxy /api/* backend:8000
+  	reverse_proxy frontend:4173
+  }

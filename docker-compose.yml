@@ -1,0 +1,45 @@
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    command: uvicorn backend.main:app --host 0.0.0.0 --port 8000 --reload
+    environment:
+      DATABASE_PATH: /data/oda-knit.db
+      ADMIN_USERNAME: odaknits
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-}
+      CONTACT_EMAIL_TO: ${CONTACT_EMAIL_TO:-oda.hennissen@gmail.com}
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+      SMTP_FROM: ${SMTP_FROM:-}
+      INSTAGRAM_ACCESS_TOKEN: ${INSTAGRAM_ACCESS_TOKEN:-}
+      INSTAGRAM_POST_LIMIT: ${INSTAGRAM_POST_LIMIT:-8}
+    expose:
+      - "8000"
+    volumes:
+      - ./backend:/app/backend
+      - oda-knit-data:/data
+
+  frontend:
+    build:
+      context: .
+      dockerfile: frontend/Dockerfile
+      target: dev
+    command: npm run dev -- --host 0.0.0.0
+    environment:
+      CHOKIDAR_USEPOLLING: "true"
+      VITE_USE_POLLING: "true"
+      WATCHPACK_POLLING: "true"
+    ports:
+      - "8000:5173"
+    volumes:
+      - ./frontend:/app/frontend
+      - ./index.html:/app/index.html
+      - ./vite.config.js:/app/vite.config.js
+    depends_on:
+      - backend
+
+volumes:
+  oda-knit-data:
