@@ -1,7 +1,9 @@
 import { useEffect, useRef, useState } from "react";
-import { motion } from "framer-motion";
+import { motion, useDragControls } from "framer-motion";
+import { assetUrl } from "../api";
 import { useCart } from "../context/CartContext";
 import { formatPrice } from "../lib/format";
+import { useMobileMotion } from "./ScrollReveal";
 
 function swatchStyle(colors) {
   const stops = (colors?.length ? colors : [{ hex: "#f2b7c6" }, { hex: "#dff3ec" }]).map((color) => color.hex);
@@ -18,8 +20,21 @@ export default function ProductModal({ product, onClose, onBuyNow }) {
   const [size, setSize] = useState(product.sizes?.[0] || "");
   const [quantity, setQuantity] = useState(1);
   const [added, setAdded] = useState(false);
+  const [closingBySwipe, setClosingBySwipe] = useState(false);
   const colors = product.colors || [];
   const lowStock = typeof product.stock === "number" && product.stock <= 3;
+  const mobile = useMobileMotion();
+  const dragControls = useDragControls();
+
+  const startDrag = (event) => {
+    if (mobile) dragControls.start(event);
+  };
+  const handleDragEnd = (event, info) => {
+    if (info.offset.y > 110 || info.velocity.y > 700) {
+      setClosingBySwipe(true);
+      onClose();
+    }
+  };
 
   useEffect(() => {
     setSize(product.sizes?.[0] || "");
@@ -82,19 +97,31 @@ export default function ProductModal({ product, onClose, onBuyNow }) {
         role="dialog"
         aria-modal="true"
         aria-labelledby="product-title"
+        drag={mobile ? "y" : false}
+        dragControls={dragControls}
+        dragListener={false}
+        dragConstraints={{ top: 0, bottom: 0 }}
+        dragElastic={{ top: 0, bottom: 1 }}
+        onDragEnd={handleDragEnd}
         initial={{ opacity: 0, y: 28, scale: 0.97 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}
-        exit={{ opacity: 0, y: 18, scale: 0.98 }}
+        exit={closingBySwipe ? { opacity: 0, y: 420 } : { opacity: 0, y: 18, scale: 0.98 }}
         transition={{ type: "spring", stiffness: 330, damping: 30 }}
       >
-        <span className="absolute top-2 left-1/2 z-20 hidden h-1 w-12 -translate-x-1/2 rounded-full bg-ink/25 max-[620px]:block" aria-hidden="true" />
-        <button ref={closeButton} className="absolute top-3 right-3 z-20 flex size-8 cursor-pointer items-center justify-center rounded-full border-0 bg-ink text-cream hover:bg-rose hover:text-ink focus-visible:bg-rose focus-visible:text-ink focus-visible:outline-2 focus-visible:outline-cream max-[620px]:top-4 max-[620px]:size-7" onClick={onClose} aria-label="Close product" title="Close">
+        <div className="absolute inset-x-0 top-0 z-20 hidden h-7 touch-none max-[620px]:block" onPointerDown={startDrag}>
+          <span className="absolute top-2 left-1/2 h-1 w-12 -translate-x-1/2 rounded-full bg-ink/25" aria-hidden="true" />
+        </div>
+        <button ref={closeButton} className="absolute top-3 right-3 z-30 flex size-8 cursor-pointer items-center justify-center rounded-full border-0 bg-ink text-cream hover:bg-rose hover:text-ink focus-visible:bg-rose focus-visible:text-ink focus-visible:outline-2 focus-visible:outline-cream max-[620px]:top-4 max-[620px]:size-7" onClick={onClose} aria-label="Close product" title="Close">
           <svg className="size-4" viewBox="0 0 24 24" aria-hidden="true">
             <path d="M7 7l10 10M17 7 7 17" fill="none" stroke="currentColor" strokeLinecap="round" strokeWidth="1.9" />
           </svg>
         </button>
-        <div className="relative flex min-h-full items-center justify-center overflow-hidden max-[620px]:h-[30svh] max-[620px]:min-h-[13rem]" style={swatchStyle(colors)}>
-          <span className="select-none font-display text-[7rem] leading-none text-white/25 max-[900px]:text-[5.5rem]" aria-hidden="true">*</span>
+        <div className="relative flex min-h-full items-center justify-center overflow-hidden max-[620px]:h-[30svh] max-[620px]:min-h-[13rem]" style={product.image ? undefined : swatchStyle(colors)}>
+          {product.image ? (
+            <img className="absolute inset-0 size-full object-cover" src={assetUrl(product.image)} alt="" />
+          ) : (
+            <span className="select-none font-display text-[7rem] leading-none text-white/25 max-[900px]:text-[5.5rem]" aria-hidden="true">*</span>
+          )}
           {product.badge && <span className="absolute top-3 left-3 rounded-full border border-ink bg-cream px-2 py-1 text-[0.72rem] font-extrabold">{product.badge}</span>}
           {lowStock && <span className="absolute bottom-3 left-3 rounded-full border border-ink bg-[#fff3d6] px-2 py-1 text-[0.72rem] font-extrabold">Only {product.stock} left</span>}
         </div>

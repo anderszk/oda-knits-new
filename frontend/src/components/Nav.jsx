@@ -53,9 +53,9 @@ export default function Nav() {
           aria-label="Main navigation"
         >
           <a href="#work">Work</a>
+          <a href="#instagram">Instagram</a>
           <a href="#store">Store</a>
           <a href="#about">About</a>
-          <a href="#instagram">Instagram</a>
           <a href="#contact">Contact</a>
         </nav>
         <div className="flex shrink-0 items-center gap-2">

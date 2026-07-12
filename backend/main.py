@@ -100,10 +100,14 @@ with sqlite3.connect(database_path) as database:
             colors TEXT NOT NULL,
             sizes TEXT NOT NULL,
             badge TEXT NOT NULL,
-            stock INTEGER NOT NULL
+            stock INTEGER NOT NULL,
+            image TEXT NOT NULL DEFAULT ''
         )
         """
     )
+    product_columns = {row[1] for row in database.execute("PRAGMA table_info(products)")}
+    if "image" not in product_columns:
+        database.execute("ALTER TABLE products ADD COLUMN image TEXT NOT NULL DEFAULT ''")
 
 app.mount("/api/uploads", StaticFiles(directory=upload_dir), name="uploads")
 
@@ -156,7 +160,7 @@ CONTACT_INFO = {
     "success": "Thanks {name}, your note has been received.",
 }
 
-PRODUCT_COLUMNS = ("id", "title", "category", "price", "description", "colors", "sizes", "badge", "stock")
+PRODUCT_COLUMNS = ("id", "title", "category", "price", "description", "colors", "sizes", "badge", "stock", "image")
 
 
 def product_from_row(row):
@@ -184,13 +188,14 @@ def save_product(database, product, product_id=None):
         "sizes": json.dumps(product.sizes),
         "badge": product.badge,
         "stock": product.stock,
+        "image": product.image,
     }
     database.execute(
         """
         INSERT OR REPLACE INTO products
-        (id, title, category, price, description, colors, sizes, badge, stock)
+        (id, title, category, price, description, colors, sizes, badge, stock, image)
         VALUES
-        (:id, :title, :category, :price, :description, :colors, :sizes, :badge, :stock)
+        (:id, :title, :category, :price, :description, :colors, :sizes, :badge, :stock, :image)
         """,
         values,
     )
@@ -332,6 +337,7 @@ class ProductPayload(BaseModel):
     sizes: list[str] = Field(min_length=1)
     badge: str = Field(default="", max_length=40)
     stock: int = Field(ge=0, le=100000)
+    image: str = Field(default="", max_length=300)
 
     @field_validator("*", mode="before")
     @classmethod

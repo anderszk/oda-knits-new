@@ -20,6 +20,7 @@ SEED_PRODUCTS = [
         "sizes": ["One size"],
         "badge": "Bestseller",
         "stock": 6,
+        "image": "https://images.unsplash.com/photo-1544967919-44c1ef2f9e7a?w=900&h=900&fit=crop&crop=entropy&q=80&auto=format&fm=jpg",
     },
     {
         "id": "cloud-mohair-sweater",
@@ -31,6 +32,7 @@ SEED_PRODUCTS = [
         "sizes": ["XS/S", "M/L", "XL/XXL"],
         "badge": "New",
         "stock": 4,
+        "image": "https://images.unsplash.com/photo-1706864685919-abccadda8d0e?w=900&h=900&fit=crop&crop=entropy&q=80&auto=format&fm=jpg",
     },
     {
         "id": "sunshine-striped-scarf",
@@ -42,6 +44,7 @@ SEED_PRODUCTS = [
         "sizes": ["One size"],
         "badge": "",
         "stock": 11,
+        "image": "https://images.unsplash.com/photo-1636576507919-929955a345c8?w=900&h=900&fit=crop&crop=entropy&q=80&auto=format&fm=jpg",
     },
     {
         "id": "petal-mittens",
@@ -53,6 +56,7 @@ SEED_PRODUCTS = [
         "sizes": ["S", "M", "L"],
         "badge": "",
         "stock": 9,
+        "image": "https://images.unsplash.com/photo-1680420562679-74976cfbc0dc?w=900&h=900&fit=crop&crop=entropy&q=80&auto=format&fm=jpg",
     },
     {
         "id": "wildflower-cardigan",
@@ -64,6 +68,7 @@ SEED_PRODUCTS = [
         "sizes": ["XS/S", "M/L", "XL/XXL"],
         "badge": "Limited",
         "stock": 2,
+        "image": "https://images.unsplash.com/photo-1610288311735-39b7facbd095?w=900&h=900&fit=crop&crop=entropy&q=80&auto=format&fm=jpg",
     },
     {
         "id": "lavender-socks",
@@ -75,6 +80,7 @@ SEED_PRODUCTS = [
         "sizes": ["36-38", "39-41", "42-44"],
         "badge": "",
         "stock": 14,
+        "image": "https://images.unsplash.com/photo-1589895869111-cab6bf8354c8?w=900&h=900&fit=crop&crop=entropy&q=80&auto=format&fm=jpg",
     },
     {
         "id": "honey-vest",
@@ -86,6 +92,7 @@ SEED_PRODUCTS = [
         "sizes": ["XS/S", "M/L"],
         "badge": "",
         "stock": 5,
+        "image": "https://images.unsplash.com/photo-1635327408138-3d1c42124523?w=900&h=900&fit=crop&crop=entropy&q=80&auto=format&fm=jpg",
     },
     {
         "id": "bubblegum-leg-warmers",
@@ -97,6 +104,7 @@ SEED_PRODUCTS = [
         "sizes": ["One size"],
         "badge": "New",
         "stock": 8,
+        "image": "https://images.unsplash.com/photo-1571139627661-cf707929f465?w=900&h=900&fit=crop&crop=entropy&q=80&auto=format&fm=jpg",
     },
 ]
 
@@ -114,13 +122,14 @@ def seed(database_path):
                 colors TEXT NOT NULL,
                 sizes TEXT NOT NULL,
                 badge TEXT NOT NULL,
-                stock INTEGER NOT NULL
+                stock INTEGER NOT NULL,
+                image TEXT NOT NULL DEFAULT ''
             )
             """
         )
         database.executemany(
-            "INSERT OR IGNORE INTO products (id, title, category, price, description, colors, sizes, badge, stock) "
-            "VALUES (:id, :title, :category, :price, :description, :colors, :sizes, :badge, :stock)",
+            "INSERT OR IGNORE INTO products (id, title, category, price, description, colors, sizes, badge, stock, image) "
+            "VALUES (:id, :title, :category, :price, :description, :colors, :sizes, :badge, :stock, :image)",
             [
                 {**product, "colors": json.dumps(product["colors"]), "sizes": json.dumps(product["sizes"])}
                 for product in SEED_PRODUCTS

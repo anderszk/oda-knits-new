@@ -62,9 +62,9 @@ function PublicSite() {
       <main>
         <Hero />
         <WorkGallery projects={work} onSelect={setSelected} />
+        <InstagramCarousel />
         <Store products={products} onSelect={setSelectedProduct} />
         <About about={about} />
-        <InstagramCarousel />
         <Contact info={contactInfo} />
       </main>
       <footer className="border-t border-ink/10 bg-cream py-6 pr-[max(5.5rem,4vw)] pl-[clamp(1rem,4vw,4rem)] text-sm font-bold text-[#6f6674] max-[620px]:pl-4">

@@ -41,6 +41,7 @@ const blankProduct = {
   sizes: ["One size"],
   badge: "",
   stock: "",
+  image: "",
 };
 const inputClass = "min-w-0 w-full rounded-md border border-ink/20 bg-cream px-3 py-2 transition hover:border-star/70 focus:border-star focus:bg-white focus:outline-none focus:ring-2 focus:ring-star/20";
 const labelClass = "grid gap-1.5 text-sm font-bold text-[#625768]";
@@ -212,6 +213,16 @@ export default function AdminDashboard() {
     body.append("file", file);
     const { url } = await request("/api/admin/uploads", { method: "POST", body });
     setForm((current) => ({ ...current, image: current.image || url, images: [...new Set([...(current.images || []), url])] }));
+    event.target.value = "";
+  }
+
+  async function uploadProductImage(event) {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    const body = new FormData();
+    body.append("file", file);
+    const { url } = await request("/api/admin/uploads", { method: "POST", body });
+    setProductForm((current) => ({ ...current, image: url }));
     event.target.value = "";
   }
 
@@ -413,7 +424,12 @@ export default function AdminDashboard() {
           </div>
           <div className="grid gap-3">
             {products.map((product) => (
-              <button className={`grid cursor-pointer grid-cols-[1fr_auto] gap-3 rounded-md border p-3 text-left transition hover:-translate-y-0.5 hover:border-star hover:shadow-[0_10px_24px_rgba(61,48,70,.12)] ${editingProductId === product.id ? "border-star bg-[#f9effb]" : "border-ink/10 bg-cream"}`} key={product.id} onClick={() => editProduct(product)} type="button">
+              <button className={`grid cursor-pointer grid-cols-[3.5rem_1fr_auto] gap-3 rounded-md border p-3 text-left transition hover:-translate-y-0.5 hover:border-star hover:shadow-[0_10px_24px_rgba(61,48,70,.12)] ${editingProductId === product.id ? "border-star bg-[#f9effb]" : "border-ink/10 bg-cream"}`} key={product.id} onClick={() => editProduct(product)} type="button">
+                {product.image ? (
+                  <img className="size-14 rounded object-cover" src={assetUrl(product.image)} alt="" />
+                ) : (
+                  <span className="grid size-14 place-items-center rounded bg-white/60 font-display text-2xl text-ink/25" aria-hidden="true">*</span>
+                )}
                 <span className="min-w-0 self-center">
                   <b className="block truncate">{product.title}</b>
                   <span className="block truncate text-sm text-[#6f6674]">{product.category}</span>
@@ -446,6 +462,17 @@ export default function AdminDashboard() {
           </div>
 
           <TextAreaField label="Description" required value={productForm.description} onChange={(event) => updateProductField("description", event.target.value)} />
+
+          <section className="grid gap-3">
+            <label className="text-sm font-extrabold uppercase text-wine">Photo</label>
+            <input className="min-w-0 w-full rounded-md border border-dashed border-ink/30 bg-cream px-3 py-3 transition hover:border-star focus:outline-none focus:ring-2 focus:ring-star/20" type="file" accept="image/*" onChange={uploadProductImage} />
+            {productForm.image && (
+              <div className="w-40 overflow-hidden rounded-md border border-ink/15 bg-cream">
+                <img className="aspect-square w-full object-cover" src={assetUrl(productForm.image)} alt="" />
+                <button className="w-full px-2 py-1.5 text-xs font-bold text-wine transition hover:bg-[#ffe3e3]" onClick={() => updateProductField("image", "")} type="button">Remove photo</button>
+              </div>
+            )}
+          </section>
 
           <section className="grid gap-3">
             <div className="flex items-center justify-between">
