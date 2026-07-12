@@ -32,6 +32,7 @@ services:
       CHOKIDAR_USEPOLLING: "true"
       VITE_USE_POLLING: "true"
       WATCHPACK_POLLING: "true"
+      BACKEND_PROXY_TARGET: "http://backend:8000"
     ports:
       - "8000:5173"
     volumes:

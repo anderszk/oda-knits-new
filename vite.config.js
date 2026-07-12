@@ -12,14 +12,14 @@ export default defineConfig({
     host: "0.0.0.0",
     hmr: {
       host: "localhost",
-      clientPort: 8000,
+      clientPort: process.env.HMR_CLIENT_PORT ? Number(process.env.HMR_CLIENT_PORT) : 8000,
     },
     watch: {
       usePolling: process.env.VITE_USE_POLLING === "true",
       interval: 250,
     },
     proxy: {
-      "/api": "http://backend:8000",
+      "/api": process.env.BACKEND_PROXY_TARGET || "http://localhost:8000",
     },
   },
   preview: {
