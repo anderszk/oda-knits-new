@@ -2,32 +2,44 @@ import { useCallback, useEffect, useState } from "react";
 import { AnimatePresence } from "framer-motion";
 import About from "./components/About";
 import AdminDashboard from "./components/AdminDashboard";
+import CartDrawer from "./components/CartDrawer";
+import CheckoutModal from "./components/CheckoutModal";
 import Contact from "./components/Contact";
 import Hero from "./components/Hero";
 import InstagramCarousel from "./components/InstagramCarousel";
 import Nav from "./components/Nav";
+import ProductModal from "./components/ProductModal";
 import ProjectModal from "./components/ProjectModal";
+import Store from "./components/Store";
 import WorkGallery from "./components/WorkGallery";
 import { api } from "./api";
+import { CartProvider, useCart } from "./context/CartContext";
 
 export default function App() {
   return window.location.pathname.startsWith("/admin") ? (
     <AdminDashboard />
   ) : (
-    <PublicSite />
+    <CartProvider>
+      <PublicSite />
+    </CartProvider>
   );
 }
 
 function PublicSite() {
   const [work, setWork] = useState([]);
+  const [products, setProducts] = useState([]);
   const [about, setAbout] = useState(null);
   const [contactInfo, setContactInfo] = useState(null);
   const [selected, setSelected] = useState(null);
+  const [selectedProduct, setSelectedProduct] = useState(null);
+  const [checkoutOpen, setCheckoutOpen] = useState(false);
+  const { closeDrawer } = useCart();
 
   useEffect(() => {
-    Promise.all([api("/api/work"), api("/api/about"), api("/api/contact-info")])
-      .then(([projects, info, contact]) => {
+    Promise.all([api("/api/work"), api("/api/products"), api("/api/about"), api("/api/contact-info")])
+      .then(([projects, catalog, info, contact]) => {
         setWork(projects);
+        setProducts(catalog);
         setAbout(info);
         setContactInfo(contact);
       })
@@ -35,6 +47,14 @@ function PublicSite() {
   }, []);
 
   const closeProject = useCallback(() => setSelected(null), []);
+  const closeProduct = useCallback(() => setSelectedProduct(null), []);
+  const openCheckoutFromProduct = useCallback(() => {
+    setSelectedProduct(null);
+    closeDrawer();
+    setCheckoutOpen(true);
+  }, [closeDrawer]);
+  const openCheckout = useCallback(() => setCheckoutOpen(true), []);
+  const closeCheckout = useCallback(() => setCheckoutOpen(false), []);
 
   return (
     <>
@@ -42,6 +62,7 @@ function PublicSite() {
       <main>
         <Hero />
         <WorkGallery projects={work} onSelect={setSelected} />
+        <Store products={products} onSelect={setSelectedProduct} />
         <About about={about} />
         <InstagramCarousel />
         <Contact info={contactInfo} />
@@ -53,6 +74,7 @@ function PublicSite() {
         </p>
           <nav className="flex flex-wrap gap-x-5 gap-y-2" aria-label="Footer navigation">
             <a className="hover:text-wine" href="#work">Work</a>
+            <a className="hover:text-wine" href="#store">Store</a>
             <a className="hover:text-wine" href="#about">About</a>
             <a className="hover:text-wine" href="#instagram">Instagram</a>
             <a className="hover:text-wine" href="#contact">Contact</a>
@@ -67,6 +89,13 @@ function PublicSite() {
       </a>
       <AnimatePresence>
         {selected && <ProjectModal project={selected} onClose={closeProject} />}
+      </AnimatePresence>
+      <AnimatePresence>
+        {selectedProduct && <ProductModal product={selectedProduct} onClose={closeProduct} onBuyNow={openCheckoutFromProduct} />}
+      </AnimatePresence>
+      <CartDrawer onCheckout={openCheckout} />
+      <AnimatePresence>
+        {checkoutOpen && <CheckoutModal onClose={closeCheckout} />}
       </AnimatePresence>
     </>
   );

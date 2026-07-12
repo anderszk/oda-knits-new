@@ -1,16 +1,64 @@
-import { motion, useReducedMotion, useScroll } from "framer-motion";
+import { animate, motion, useMotionValue, useReducedMotion, useScroll, useTransform } from "framer-motion";
 import { useRef } from "react";
 import { assetUrl } from "../api";
 import ScrollReveal, { useMobileMotion, useScrollRevealStyle } from "./ScrollReveal";
 
-const cardPaths = [
-  { x: -56, y: 26, rotate: -1.4 },
-  { x: 42, y: 34, rotate: 1.1 },
-  { x: 52, y: -10, rotate: 1.6 },
-  { x: -36, y: 44, rotate: -1 },
-  { x: -44, y: -14, rotate: 1 },
-  { x: 50, y: 18, rotate: -1.3 },
-];
+// Column/row spans mirror the `.work-mosaic--count-N` grid-area rules in styles.css
+// (12-col / up-to-8-row grid), so each tile can enter from whichever edge of the
+// mosaic it actually sits against, converging toward the center as it settles.
+const MOSAIC_LAYOUT = {
+  1: [{ col: [1, 13], row: [1, 7] }],
+  2: [
+    { col: [1, 7], row: [1, 7] },
+    { col: [7, 13], row: [1, 7] },
+  ],
+  3: [
+    { col: [1, 7], row: [1, 9] },
+    { col: [7, 13], row: [1, 5] },
+    { col: [7, 13], row: [5, 9] },
+  ],
+  4: [
+    { col: [1, 7], row: [1, 5] },
+    { col: [7, 13], row: [1, 5] },
+    { col: [1, 7], row: [5, 9] },
+    { col: [7, 13], row: [5, 9] },
+  ],
+  5: [
+    { col: [1, 6], row: [1, 9] },
+    { col: [6, 10], row: [1, 5] },
+    { col: [10, 13], row: [1, 5] },
+    { col: [6, 9], row: [5, 9] },
+    { col: [9, 13], row: [5, 9] },
+  ],
+  6: [
+    { col: [1, 6], row: [1, 9] },
+    { col: [6, 10], row: [1, 5] },
+    { col: [10, 13], row: [1, 3] },
+    { col: [10, 13], row: [3, 5] },
+    { col: [6, 9], row: [5, 9] },
+    { col: [9, 13], row: [5, 9] },
+  ],
+};
+
+function mirrorRange([start, end]) {
+  return [14 - end, 14 - start];
+}
+
+function cardEntrance(groupSize, mirror, slot) {
+  const layout = MOSAIC_LAYOUT[groupSize]?.[slot];
+  if (!layout) return { x: 0, y: 34, rotate: 0 };
+  const col = mirror ? mirrorRange(layout.col) : layout.col;
+  const colCenter = (col[0] + col[1]) / 2;
+  const rowCenter = (layout.row[0] + layout.row[1]) / 2;
+  const gridCenterRow = (groupSize <= 2 ? 6 : 8) / 2 + 1;
+  const xDir = Math.sign(colCenter - 7);
+  const yDir = Math.sign(rowCenter - gridCenterRow) || 1;
+  return {
+    x: xDir * (26 + Math.abs(colCenter - 7) * 5),
+    y: yDir * (20 + Math.abs(rowCenter - gridCenterRow) * 6),
+    rotate: xDir ? xDir * 1.3 : (slot % 2 ? 1 : -1) * 0.8,
+  };
+}
 
 function chunkProjects(projects) {
   const chunks = [];
@@ -40,20 +88,23 @@ export default function WorkGallery({ projects, onSelect }) {
         <p className="mb-1 max-w-sm leading-relaxed text-[#6f6674]">Open a piece for yarn, technique, size, and color details.</p>
       </ScrollReveal>
       <div className="work-grid gap-[1.15rem] max-[620px]:gap-4" ref={gridRef}>
-        {projectGroups.map((group, groupIndex) => (
-          <div className={`work-mosaic work-mosaic--count-${group.length} ${groupIndex % 2 ? "work-mosaic--mirror" : ""}`} key={group.map((item) => item.id || item.title).join("-")}>
-            {group.map((item, slot) => (
-              <WorkCard groupSize={group.length} item={item} index={groupIndex * 6 + slot} key={item.id || item.title} mobile={mobile} onSelect={onSelect} progress={scrollYProgress} reduceMotion={reduceMotion} slot={slot} />
-            ))}
-          </div>
-        ))}
+        {projectGroups.map((group, groupIndex) => {
+          const mirror = Boolean(groupIndex % 2);
+          return (
+            <div className={`work-mosaic work-mosaic--count-${group.length} ${mirror ? "work-mosaic--mirror" : ""}`} key={group.map((item) => item.id || item.title).join("-")}>
+              {group.map((item, slot) => (
+                <WorkCard groupSize={group.length} item={item} key={item.id || item.title} mirror={mirror} mobile={mobile} onSelect={onSelect} progress={scrollYProgress} reduceMotion={reduceMotion} slot={slot} />
+              ))}
+            </div>
+          );
+        })}
       </div>
     </section>
   );
 }
 
-function WorkCard({ groupSize, item, index, mobile, onSelect, progress, reduceMotion, slot }) {
-  const path = cardPaths[index % cardPaths.length];
+function WorkCard({ groupSize, item, mirror, mobile, onSelect, progress, reduceMotion, slot }) {
+  const path = cardEntrance(groupSize, mirror, slot);
   const style = useScrollRevealStyle(progress, {
     from: { x: path.x, y: path.y },
     rotate: path.rotate,
@@ -61,6 +112,12 @@ function WorkCard({ groupSize, item, index, mobile, onSelect, progress, reduceMo
     mobile,
     reduceMotion,
   });
+  const hoverLift = useMotionValue(0);
+  const zero = useMotionValue(0);
+  const liftedY = useTransform([style?.y ?? zero, hoverLift], ([scrollY, lift]) => scrollY + lift);
+  const cardStyle = style ? { ...style, y: liftedY } : undefined;
+  const liftIn = () => !reduceMotion && animate(hoverLift, -7, { type: "spring", stiffness: 320, damping: 24 });
+  const liftOut = () => !reduceMotion && animate(hoverLift, 0, { type: "spring", stiffness: 320, damping: 24 });
   const colors = item.colors || [];
   const isWip = String(item.year || "").trim().toLowerCase() === "wip";
   const compact = groupSize >= 5 && (slot === 2 || slot === 3);
@@ -84,9 +141,11 @@ function WorkCard({ groupSize, item, index, mobile, onSelect, progress, reduceMo
   return (
     <motion.button
       type="button"
-      className="work-card group relative h-full cursor-pointer overflow-hidden rounded-lg border border-ink/15 bg-white p-0 text-left focus-visible:outline-[3px] focus-visible:outline-offset-3 focus-visible:outline-rose"
+      className="work-card group relative h-full cursor-pointer overflow-hidden rounded-lg border border-ink/15 bg-white p-0 text-left shadow-[0_6px_16px_rgba(61,48,70,.06)] transition-shadow duration-300 hover:shadow-[0_20px_40px_rgba(61,48,70,.18)] focus-visible:outline-[3px] focus-visible:outline-offset-3 focus-visible:outline-rose"
       onClick={() => onSelect(item)}
-      style={style}
+      style={cardStyle}
+      onHoverStart={liftIn}
+      onHoverEnd={liftOut}
       whileTap={{ scale: 0.985 }}
     >
       <div className="h-full overflow-hidden bg-mint">

@@ -1,5 +1,37 @@
 import { useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
+import { useCart } from "../context/CartContext";
+
+function CartButton({ className = "" }) {
+  const { count, toggleDrawer } = useCart();
+  return (
+    <button
+      className={`relative grid size-10 cursor-pointer place-items-center rounded-full border border-ink/15 bg-white text-ink transition hover:-translate-y-0.5 hover:text-wine focus-visible:-translate-y-0.5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink ${className}`}
+      type="button"
+      onClick={toggleDrawer}
+      aria-label={`Open basket, ${count} item${count === 1 ? "" : "s"}`}
+    >
+      <svg className="size-4.5" viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M6 8h12l-1.2 11.2a2 2 0 0 1-2 1.8H9.2a2 2 0 0 1-2-1.8L6 8Z" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" />
+        <path d="M9 8a3 3 0 0 1 6 0" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+      </svg>
+      <AnimatePresence>
+        {count > 0 && (
+          <motion.span
+            key={count}
+            className="absolute -top-1.5 -right-1.5 grid min-w-[1.15rem] place-items-center rounded-full border border-cream bg-rose px-1 py-px text-[0.65rem] font-extrabold text-ink"
+            initial={{ scale: 0.4, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            exit={{ scale: 0.4, opacity: 0 }}
+            transition={{ type: "spring", stiffness: 500, damping: 22 }}
+          >
+            {count}
+          </motion.span>
+        )}
+      </AnimatePresence>
+    </button>
+  );
+}
 
 export default function Nav() {
   const [open, setOpen] = useState(false);
@@ -21,23 +53,27 @@ export default function Nav() {
           aria-label="Main navigation"
         >
           <a href="#work">Work</a>
+          <a href="#store">Store</a>
           <a href="#about">About</a>
           <a href="#instagram">Instagram</a>
           <a href="#contact">Contact</a>
         </nav>
-        <button
-          className="hidden h-10 w-13 place-items-center rounded-lg border-0 bg-transparent text-ink max-[620px]:grid"
-          type="button"
-          onClick={() => setOpen(true)}
-          aria-label="Open menu"
-          aria-expanded={open}
-        >
-          <span className="grid gap-1.5" aria-hidden="true">
-            <i className="block h-0.5 w-6 rounded-full bg-current" />
-            <i className="block h-0.5 w-6 rounded-full bg-current" />
-            <i className="block h-0.5 w-6 rounded-full bg-current" />
-          </span>
-        </button>
+        <div className="flex shrink-0 items-center gap-2">
+          <CartButton />
+          <button
+            className="hidden h-10 w-13 place-items-center rounded-lg border-0 bg-transparent text-ink max-[620px]:grid"
+            type="button"
+            onClick={() => setOpen(true)}
+            aria-label="Open menu"
+            aria-expanded={open}
+          >
+            <span className="grid gap-1.5" aria-hidden="true">
+              <i className="block h-0.5 w-6 rounded-full bg-current" />
+              <i className="block h-0.5 w-6 rounded-full bg-current" />
+              <i className="block h-0.5 w-6 rounded-full bg-current" />
+            </span>
+          </button>
+        </div>
       </header>
       <AnimatePresence>
         {open && (
@@ -100,6 +136,18 @@ export default function Nav() {
                 </a>
                 <a
                   className="group flex items-end justify-between border-b border-ink/15 py-4"
+                  href="#store"
+                  onClick={() => setOpen(false)}
+                >
+                  <span className="font-display text-[2.45rem] leading-none transition group-hover:text-wine">
+                    Store
+                  </span>
+                  <span className="mb-1 text-xs uppercase tracking-[0.24em] text-[#e3a85e]">
+                    02
+                  </span>
+                </a>
+                <a
+                  className="group flex items-end justify-between border-b border-ink/15 py-4"
                   href="#about"
                   onClick={() => setOpen(false)}
                 >
@@ -107,7 +155,7 @@ export default function Nav() {
                     About
                   </span>
                   <span className="mb-1 text-xs uppercase tracking-[0.24em] text-star">
-                    02
+                    03
                   </span>
                 </a>
                 <a
@@ -119,7 +167,7 @@ export default function Nav() {
                     Instagram
                   </span>
                   <span className="mb-1 text-xs uppercase tracking-[0.24em] text-wine">
-                    03
+                    04
                   </span>
                 </a>
                 <a
@@ -131,7 +179,7 @@ export default function Nav() {
                     Contact
                   </span>
                   <span className="mb-1 text-xs uppercase tracking-[0.24em] text-[#4f9b84]">
-                    04
+                    05
                   </span>
                 </a>
               </div>

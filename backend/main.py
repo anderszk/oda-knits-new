@@ -77,6 +77,33 @@ with sqlite3.connect(database_path) as database:
         )
         """
     )
+    database.execute(
+        """
+        CREATE TABLE IF NOT EXISTS orders (
+            id TEXT PRIMARY KEY,
+            items TEXT NOT NULL,
+            subtotal INTEGER NOT NULL,
+            shipping TEXT NOT NULL,
+            payment_method TEXT NOT NULL,
+            created_at TEXT NOT NULL
+        )
+        """
+    )
+    database.execute(
+        """
+        CREATE TABLE IF NOT EXISTS products (
+            id TEXT PRIMARY KEY,
+            title TEXT NOT NULL,
+            category TEXT NOT NULL,
+            price INTEGER NOT NULL,
+            description TEXT NOT NULL,
+            colors TEXT NOT NULL,
+            sizes TEXT NOT NULL,
+            badge TEXT NOT NULL,
+            stock INTEGER NOT NULL
+        )
+        """
+    )
 
 app.mount("/api/uploads", StaticFiles(directory=upload_dir), name="uploads")
 
@@ -129,6 +156,46 @@ CONTACT_INFO = {
     "success": "Thanks {name}, your note has been received.",
 }
 
+PRODUCT_COLUMNS = ("id", "title", "category", "price", "description", "colors", "sizes", "badge", "stock")
+
+
+def product_from_row(row):
+    product = dict(zip(PRODUCT_COLUMNS, row, strict=True))
+    product["colors"] = json.loads(product["colors"])
+    product["sizes"] = json.loads(product["sizes"])
+    return product
+
+
+def load_products():
+    with sqlite3.connect(database_path) as database:
+        rows = database.execute(f"SELECT {', '.join(PRODUCT_COLUMNS)} FROM products").fetchall()
+    return [product_from_row(row) for row in rows]
+
+
+def save_product(database, product, product_id=None):
+    final_id = product_id or product.id or unique_id(database, "products", product.title, "product")
+    values = {
+        "id": final_id,
+        "title": product.title,
+        "category": product.category,
+        "price": product.price,
+        "description": product.description,
+        "colors": json.dumps([color.model_dump() for color in product.colors]),
+        "sizes": json.dumps(product.sizes),
+        "badge": product.badge,
+        "stock": product.stock,
+    }
+    database.execute(
+        """
+        INSERT OR REPLACE INTO products
+        (id, title, category, price, description, colors, sizes, badge, stock)
+        VALUES
+        (:id, :title, :category, :price, :description, :colors, :sizes, :badge, :stock)
+        """,
+        values,
+    )
+    return {**values, "colors": json.loads(values["colors"]), "sizes": json.loads(values["sizes"])}
+
 
 PROJECT_COLUMNS = (
     "id",
@@ -157,16 +224,16 @@ def project_from_row(row):
     return project
 
 
-def slugify(value):
+def slugify(value, fallback="item"):
     slug = re.sub(r"[^a-z0-9]+", "-", value.lower()).strip("-")
-    return slug or f"project-{secrets.token_hex(3)}"
+    return slug or f"{fallback}-{secrets.token_hex(3)}"
 
 
-def unique_project_id(database, title):
-    base = slugify(title)
+def unique_id(database, table, title, fallback="item"):
+    base = slugify(title, fallback)
     candidate = base
     index = 2
-    while database.execute("SELECT 1 FROM projects WHERE id = ?", (candidate,)).fetchone():
+    while database.execute(f"SELECT 1 FROM {table} WHERE id = ?", (candidate,)).fetchone():
         candidate = f"{base}-{index}"
         index += 1
     return candidate
@@ -175,7 +242,7 @@ def unique_project_id(database, title):
 def save_project(database, project, project_id=None):
     now = datetime.now(UTC).isoformat()
     existing = database.execute("SELECT created_at FROM projects WHERE id = ?", (project_id or project.id,)).fetchone()
-    final_id = project_id or project.id or unique_project_id(database, project.title)
+    final_id = project_id or project.id or unique_id(database, "projects", project.title, "project")
     images = [image for image in project.images if image]
     if project.image and project.image not in images:
         images.insert(0, project.image)
@@ -253,6 +320,27 @@ class ProjectPayload(BaseModel):
         if self.year.lower() == "wip":
             self.year = "WIP"
         return self
+
+
+class ProductPayload(BaseModel):
+    id: str = ""
+    title: str = Field(min_length=2, max_length=100)
+    category: str = Field(min_length=2, max_length=100)
+    price: int = Field(ge=0, le=100000)
+    description: str = Field(min_length=10, max_length=1200)
+    colors: list[ProjectColor] = Field(min_length=1)
+    sizes: list[str] = Field(min_length=1)
+    badge: str = Field(default="", max_length=40)
+    stock: int = Field(ge=0, le=100000)
+
+    @field_validator("*", mode="before")
+    @classmethod
+    def strip_text(cls, value):
+        if isinstance(value, str):
+            return value.strip()
+        if isinstance(value, list):
+            return [item.strip() if isinstance(item, str) else item for item in value]
+        return value
 
 
 class AboutDetail(BaseModel):
@@ -354,6 +442,43 @@ class LoginPayload(BaseModel):
     password: str
 
 
+class OrderItem(BaseModel):
+    id: str = Field(min_length=1, max_length=80)
+    title: str = Field(min_length=1, max_length=100)
+    price: int = Field(ge=0, le=100000)
+    size: str = Field(min_length=1, max_length=40)
+    quantity: int = Field(ge=1, le=20)
+
+
+class ShippingInfo(BaseModel):
+    name: str = Field(min_length=2, max_length=100)
+    email: EmailStr
+    address: str = Field(min_length=4, max_length=200)
+    city: str = Field(min_length=1, max_length=100)
+    postal_code: str = Field(min_length=3, max_length=12)
+    phone: str = Field(default="", max_length=30)
+
+    @field_validator("name", "address", "city", "phone", mode="before")
+    @classmethod
+    def strip_text(cls, value):
+        return value.strip() if isinstance(value, str) else value
+
+
+class OrderPayload(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    items: list[OrderItem] = Field(min_length=1, max_length=50)
+    shipping: ShippingInfo
+    payment_method: str = Field(min_length=2, max_length=40)
+    website: str = Field(default="", max_length=200)
+
+    @model_validator(mode="after")
+    def reject_spam(self):
+        if self.website:
+            raise ValueError("Invalid order submission")
+        return self
+
+
 def send_contact_email(message: ContactMessage, created_at: str):
     smtp_host = os.getenv("SMTP_HOST")
     smtp_user = os.getenv("SMTP_USER", "")
@@ -372,6 +497,41 @@ def send_contact_email(message: ContactMessage, created_at: str):
         f"Email: {message.email}\n"
         f"Received: {created_at}\n\n"
         f"{message.message}\n"
+    )
+
+    with smtplib.SMTP(smtp_host, int(os.getenv("SMTP_PORT", "587")), timeout=10) as server:
+        server.starttls()
+        if smtp_user and smtp_password:
+            server.login(smtp_user, smtp_password)
+        server.send_message(email)
+
+
+def send_order_email(order: OrderPayload, order_id: str, subtotal: int, created_at: str):
+    smtp_host = os.getenv("SMTP_HOST")
+    smtp_user = os.getenv("SMTP_USER", "")
+    smtp_password = os.getenv("SMTP_PASSWORD", "")
+    smtp_from = os.getenv("SMTP_FROM", smtp_user)
+    if not smtp_host or not smtp_from:
+        raise RuntimeError("SMTP_HOST and SMTP_FROM or SMTP_USER must be set")
+
+    lines = "\n".join(
+        f"- {item.quantity} x {item.title} ({item.size}) - {item.price * item.quantity} kr"
+        for item in order.items
+    )
+    shipping = order.shipping
+    email = EmailMessage()
+    email["To"] = contact_email_to
+    email["From"] = smtp_from
+    email["Reply-To"] = str(shipping.email)
+    email["Subject"] = f"Oda Knits order {order_id}"
+    email.set_content(
+        f"Order: {order_id}\n"
+        f"Received: {created_at}\n"
+        f"Payment method (mock checkout): {order.payment_method}\n\n"
+        f"Items:\n{lines}\n\n"
+        f"Subtotal: {subtotal} kr\n\n"
+        f"Ship to:\n{shipping.name}\n{shipping.address}\n{shipping.postal_code} {shipping.city}\n"
+        f"{shipping.phone}\n{shipping.email}\n"
     )
 
     with smtplib.SMTP(smtp_host, int(os.getenv("SMTP_PORT", "587")), timeout=10) as server:
@@ -419,6 +579,42 @@ def get_about():
 @app.get("/api/contact-info")
 def get_contact_info():
     return load_contact_info()
+
+
+@app.get("/api/products")
+def get_products():
+    return load_products()
+
+
+@app.post("/api/orders", status_code=201)
+def create_order(order: OrderPayload, request: Request = None):
+    check_rate_limit("order", client_key(request), 5, 10 * 60)
+    catalog = {product["id"]: product for product in load_products()}
+    for item in order.items:
+        product = catalog.get(item.id)
+        if not product or item.price != product["price"] or item.size not in product["sizes"]:
+            raise HTTPException(status_code=400, detail="One of the items in your basket is no longer available")
+
+    subtotal = sum(item.price * item.quantity for item in order.items)
+    order_id = f"OK-{datetime.now(UTC).strftime('%y%m%d')}-{secrets.token_hex(3).upper()}"
+    created_at = datetime.now(UTC).isoformat()
+    with sqlite3.connect(database_path) as database:
+        database.execute(
+            "INSERT INTO orders (id, items, subtotal, shipping, payment_method, created_at) VALUES (?, ?, ?, ?, ?, ?)",
+            (
+                order_id,
+                json.dumps([item.model_dump() for item in order.items]),
+                subtotal,
+                json.dumps(order.shipping.model_dump(mode="json")),
+                order.payment_method,
+                created_at,
+            ),
+        )
+    try:
+        send_order_email(order, order_id, subtotal, created_at)
+    except (OSError, RuntimeError, smtplib.SMTPException):
+        pass
+    return {"ok": True, "id": order_id, "subtotal": subtotal}
 
 
 @app.get("/api/instagram")
@@ -531,6 +727,33 @@ def update_project(project_id: str, project: ProjectPayload, _=Depends(require_a
 def delete_project(project_id: str, _=Depends(require_admin)):
     with sqlite3.connect(database_path) as database:
         database.execute("DELETE FROM projects WHERE id = ?", (project_id,))
+
+
+@app.get("/api/admin/products")
+def admin_products(_=Depends(require_admin)):
+    return load_products()
+
+
+@app.post("/api/admin/products", status_code=201)
+def create_product(product: ProductPayload, _=Depends(require_admin)):
+    with sqlite3.connect(database_path) as database:
+        saved = save_product(database, product)
+    return {"ok": True, "id": saved["id"]}
+
+
+@app.put("/api/admin/products/{product_id}")
+def update_product(product_id: str, product: ProductPayload, _=Depends(require_admin)):
+    with sqlite3.connect(database_path) as database:
+        if not database.execute("SELECT 1 FROM products WHERE id = ?", (product_id,)).fetchone():
+            raise HTTPException(status_code=404, detail="Product not found")
+        save_product(database, product, product_id=product_id)
+    return {"ok": True, "id": product_id}
+
+
+@app.delete("/api/admin/products/{product_id}", status_code=204)
+def delete_product(product_id: str, _=Depends(require_admin)):
+    with sqlite3.connect(database_path) as database:
+        database.execute("DELETE FROM products WHERE id = ?", (product_id,))
 
 
 @app.post("/api/admin/uploads", status_code=201)
