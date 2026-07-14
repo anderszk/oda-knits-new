@@ -4,6 +4,7 @@ import About from "./components/About";
 import AdminDashboard from "./components/AdminDashboard";
 import CartDrawer from "./components/CartDrawer";
 import CheckoutModal from "./components/CheckoutModal";
+import CheckoutPage from "./components/CheckoutPage";
 import Contact from "./components/Contact";
 import Hero from "./components/Hero";
 import InstagramCarousel from "./components/InstagramCarousel";
@@ -14,18 +15,36 @@ import Store from "./components/Store";
 import WorkGallery from "./components/WorkGallery";
 import { api } from "./api";
 import { CartProvider, useCart } from "./context/CartContext";
+import { isDesktopViewport } from "./lib/viewport";
 
 export default function App() {
-  return window.location.pathname.startsWith("/admin") ? (
-    <AdminDashboard />
-  ) : (
+  const [pathname, setPathname] = useState(window.location.pathname);
+
+  useEffect(() => {
+    const onPopState = () => setPathname(window.location.pathname);
+    window.addEventListener("popstate", onPopState);
+    return () => window.removeEventListener("popstate", onPopState);
+  }, []);
+
+  const navigate = useCallback((path) => {
+    window.history.pushState({}, "", path);
+    setPathname(path);
+  }, []);
+
+  if (pathname.startsWith("/admin")) return <AdminDashboard />;
+
+  return (
     <CartProvider>
-      <PublicSite />
+      {pathname.startsWith("/checkout") ? (
+        <CheckoutPage onNavigateHome={() => navigate("/")} />
+      ) : (
+        <PublicSite navigate={navigate} />
+      )}
     </CartProvider>
   );
 }
 
-function PublicSite() {
+function PublicSite({ navigate }) {
   const [work, setWork] = useState([]);
   const [products, setProducts] = useState([]);
   const [about, setAbout] = useState(null);
@@ -48,12 +67,18 @@ function PublicSite() {
 
   const closeProject = useCallback(() => setSelected(null), []);
   const closeProduct = useCallback(() => setSelectedProduct(null), []);
+  const goToCheckout = useCallback(() => {
+    if (isDesktopViewport()) {
+      navigate("/checkout");
+    } else {
+      setCheckoutOpen(true);
+    }
+  }, [navigate]);
   const openCheckoutFromProduct = useCallback(() => {
     setSelectedProduct(null);
     closeDrawer();
-    setCheckoutOpen(true);
-  }, [closeDrawer]);
-  const openCheckout = useCallback(() => setCheckoutOpen(true), []);
+    goToCheckout();
+  }, [closeDrawer, goToCheckout]);
   const closeCheckout = useCallback(() => setCheckoutOpen(false), []);
 
   return (
@@ -93,7 +118,7 @@ function PublicSite() {
       <AnimatePresence>
         {selectedProduct && <ProductModal product={selectedProduct} onClose={closeProduct} onBuyNow={openCheckoutFromProduct} />}
       </AnimatePresence>
-      <CartDrawer onCheckout={openCheckout} />
+      <CartDrawer onCheckout={goToCheckout} />
       <AnimatePresence>
         {checkoutOpen && <CheckoutModal onClose={closeCheckout} />}
       </AnimatePresence>

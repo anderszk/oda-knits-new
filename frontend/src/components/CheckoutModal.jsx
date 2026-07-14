@@ -1,14 +1,7 @@
-import { useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { api } from "../api";
 import { useCart } from "../context/CartContext";
 import { formatPrice } from "../lib/format";
-
-const PAYMENT_METHODS = [
-  { id: "card", label: "Card", hint: "Visa, Mastercard" },
-  { id: "vipps", label: "Vipps", hint: "Pay with your phone" },
-  { id: "klarna", label: "Klarna", hint: "Pay in installments" },
-];
+import { PAYMENT_METHODS, useCheckout } from "../hooks/useCheckout";
 
 const CONFETTI = ["#e0607a", "#a9ddce", "#f6dc74", "#c6b6ec", "#f2a7c6", "#bd5bd3"];
 
@@ -16,53 +9,13 @@ const inputClass = "min-w-0 w-full rounded-md border border-ink/20 bg-white px-3
 const labelClass = "grid gap-1.5 text-sm font-bold text-[#625768]";
 
 export default function CheckoutModal({ onClose }) {
-  const { items, subtotal, clear, closeDrawer } = useCart();
-  const [step, setStep] = useState("review");
-  const [shipping, setShipping] = useState({ name: "", email: "", address: "", city: "", postalCode: "", phone: "" });
-  const [paymentMethod, setPaymentMethod] = useState("card");
-  const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState("");
-  const [order, setOrder] = useState(null);
-
-  const updateShipping = (field, value) => setShipping((current) => ({ ...current, [field]: value }));
-
-  const shippingValid = shipping.name.trim().length > 1
-    && /\S+@\S+\.\S+/.test(shipping.email)
-    && shipping.address.trim().length > 3
-    && shipping.city.trim().length > 0
-    && shipping.postalCode.trim().length > 2;
-
-  const placeOrder = async () => {
-    setSubmitting(true);
-    setError("");
-    try {
-      const payload = {
-        items: items.map((line) => ({ id: line.id, title: line.title, price: line.price, size: line.size, quantity: line.quantity })),
-        shipping: {
-          name: shipping.name.trim(),
-          email: shipping.email.trim(),
-          address: shipping.address.trim(),
-          city: shipping.city.trim(),
-          postal_code: shipping.postalCode.trim(),
-          phone: shipping.phone.trim(),
-        },
-        payment_method: PAYMENT_METHODS.find((method) => method.id === paymentMethod)?.label || paymentMethod,
-        website: "",
-      };
-      const result = await api("/api/orders", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
-      setOrder(result);
-      setStep("success");
-      clear();
-    } catch {
-      setError("Something went wrong placing your order. Please try again.");
-    } finally {
-      setSubmitting(false);
-    }
-  };
+  const { closeDrawer } = useCart();
+  const {
+    items, subtotal, step, setStep,
+    shipping, updateShipping, shippingValid,
+    paymentMethod, setPaymentMethod,
+    submitting, error, order, placeOrder,
+  } = useCheckout();
 
   const finish = () => {
     closeDrawer();

@@ -6,14 +6,15 @@ function CartButton({ className = "" }) {
   const { count, toggleDrawer } = useCart();
   return (
     <button
-      className={`relative grid size-10 cursor-pointer place-items-center rounded-full border border-ink/15 bg-white text-ink transition hover:-translate-y-0.5 hover:text-wine focus-visible:-translate-y-0.5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink ${className}`}
+      className={`relative grid size-10 cursor-pointer place-items-center rounded-lg border-0 bg-transparent text-ink transition hover:-translate-y-0.5 hover:text-wine focus-visible:-translate-y-0.5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink ${className}`}
       type="button"
       onClick={toggleDrawer}
       aria-label={`Open basket, ${count} item${count === 1 ? "" : "s"}`}
     >
-      <svg className="size-4.5" viewBox="0 0 24 24" aria-hidden="true">
-        <path d="M6 8h12l-1.2 11.2a2 2 0 0 1-2 1.8H9.2a2 2 0 0 1-2-1.8L6 8Z" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" />
-        <path d="M9 8a3 3 0 0 1 6 0" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+      <svg className="size-5" viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M5 9h14l-1.3 9.3a2 2 0 0 1-2 1.7H8.3a2 2 0 0 1-2-1.7L5 9Z" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" />
+        <path d="M7 9 5.5 5M17 9l1.5-4" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+        <path d="M7.3 13.2h9.4M7.9 16.6h8.2" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
       </svg>
       <AnimatePresence>
         {count > 0 && (
