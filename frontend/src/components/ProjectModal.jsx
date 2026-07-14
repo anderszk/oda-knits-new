@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
-import { AnimatePresence, motion } from "framer-motion";
+import { AnimatePresence, motion, useDragControls } from "framer-motion";
 import { assetUrl } from "../api";
+import { useMobileMotion } from "./ScrollReveal";
 
 export default function ProjectModal({ project, onClose }) {
   const closeButton = useRef(null);
@@ -10,6 +11,19 @@ export default function ProjectModal({ project, onClose }) {
   const images = project.images?.length ? project.images : [project.image].filter(Boolean);
   const isWip = String(project.year || "").trim().toLowerCase() === "wip";
   const [imageIndex, setImageIndex] = useState(0);
+  const [closingBySwipe, setClosingBySwipe] = useState(false);
+  const mobile = useMobileMotion();
+  const dragControls = useDragControls();
+
+  const startDrag = (event) => {
+    if (mobile) dragControls.start(event);
+  };
+  const handleDragEnd = (event, info) => {
+    if (info.offset.y > 110 || info.velocity.y > 700) {
+      setClosingBySwipe(true);
+      onClose();
+    }
+  };
   const arrowClass = "absolute top-1/2 z-10 flex size-9 -translate-y-1/2 cursor-pointer items-center justify-center rounded-full border border-ink bg-cream/90 text-ink hover:bg-[#f6dc74] focus-visible:bg-[#f6dc74] max-[620px]:size-8";
   const details = [
     ["Yarn", project.yarn],
@@ -87,13 +101,21 @@ export default function ProjectModal({ project, onClose }) {
         role="dialog"
         aria-modal="true"
         aria-labelledby="project-title"
+        drag={mobile ? "y" : false}
+        dragControls={dragControls}
+        dragListener={false}
+        dragConstraints={{ top: 0, bottom: 0 }}
+        dragElastic={{ top: 0, bottom: 1 }}
+        onDragEnd={handleDragEnd}
         initial={{ opacity: 0, y: 28, scale: 0.97 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}
-        exit={{ opacity: 0, y: 18, scale: 0.98 }}
+        exit={closingBySwipe ? { opacity: 0, y: 420 } : { opacity: 0, y: 18, scale: 0.98 }}
         transition={{ type: "spring", stiffness: 330, damping: 30 }}
       >
-        <span className="absolute top-2 left-1/2 z-20 hidden h-1 w-12 -translate-x-1/2 rounded-full bg-ink/25 max-[620px]:block" aria-hidden="true" />
-        <button ref={closeButton} className="absolute top-3 right-3 z-20 flex size-8 cursor-pointer items-center justify-center rounded-full border-0 bg-ink text-cream hover:bg-rose hover:text-ink focus-visible:bg-rose focus-visible:text-ink focus-visible:outline-2 focus-visible:outline-cream max-[620px]:top-4 max-[620px]:size-7" onClick={onClose} aria-label="Close project" title="Close">
+        <div className="absolute inset-x-0 top-0 z-20 hidden h-7 touch-none max-[620px]:block" onPointerDown={startDrag}>
+          <span className="absolute top-2 left-1/2 h-1 w-12 -translate-x-1/2 rounded-full bg-ink/25" aria-hidden="true" />
+        </div>
+        <button ref={closeButton} className="absolute top-3 right-3 z-30 flex size-8 cursor-pointer items-center justify-center rounded-full border-0 bg-ink text-cream hover:bg-rose hover:text-ink focus-visible:bg-rose focus-visible:text-ink focus-visible:outline-2 focus-visible:outline-cream max-[620px]:top-4 max-[620px]:size-7" onClick={onClose} aria-label="Close project" title="Close">
           <svg className="size-4" viewBox="0 0 24 24" aria-hidden="true">
             <path d="M7 7l10 10M17 7 7 17" fill="none" stroke="currentColor" strokeLinecap="round" strokeWidth="1.9" />
           </svg>

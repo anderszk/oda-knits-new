@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { motion } from "framer-motion";
 import { assetUrl } from "../api";
+import { nearestColorName } from "../lib/colorNames";
 
 const API_BASE = import.meta.env.VITE_API_URL || "";
 const blankProject = {
@@ -31,6 +32,18 @@ const blankContact = {
   body: "",
   button: "",
   success: "",
+};
+const blankProduct = {
+  title: "",
+  category: "",
+  price: "",
+  description: "",
+  colors: [{ name: "Petal", hex: "#bd5bd3" }],
+  sizes: ["One size"],
+  badge: "",
+  stock: "",
+  image: "",
+  images: [],
 };
 const inputClass = "min-w-0 w-full rounded-md border border-ink/20 bg-cream px-3 py-2 transition hover:border-star/70 focus:border-star focus:bg-white focus:outline-none focus:ring-2 focus:ring-star/20";
 const labelClass = "grid gap-1.5 text-sm font-bold text-[#625768]";
@@ -75,9 +88,26 @@ function validateProject(project) {
   return "";
 }
 
+function validateProduct(product) {
+  const required = [
+    ["Product title", product.title],
+    ["Category", product.category],
+    ["Description", product.description],
+  ];
+  const missing = required.find(([, value]) => !String(value || "").trim());
+  if (missing) return `${missing[0]} is required.`;
+  if (product.price === "" || Number(product.price) < 0) return "Price is required.";
+  if (product.stock === "" || Number(product.stock) < 0) return "Stock is required.";
+  if (!product.colors?.length) return "At least one color is required.";
+  if (product.colors.some((color) => !color.name.trim())) return "Every color needs a name.";
+  if (!product.sizes?.length) return "At least one size is required.";
+  return "";
+}
+
 export default function AdminDashboard() {
   const isAboutPage = window.location.pathname.startsWith("/admin/about");
   const isContactPage = window.location.pathname.startsWith("/admin/contact");
+  const isProductsPage = window.location.pathname.startsWith("/admin/products");
   const [token, setToken] = useState(() => localStorage.getItem("oda-admin-token") || "");
   const [login, setLogin] = useState({ username: "", password: "" });
   const [projects, setProjects] = useState([]);
@@ -85,9 +115,13 @@ export default function AdminDashboard() {
   const [form, setForm] = useState(blankProject);
   const [aboutForm, setAboutForm] = useState(blankAbout);
   const [contactForm, setContactForm] = useState(blankContact);
+  const [products, setProducts] = useState([]);
+  const [editingProductId, setEditingProductId] = useState("");
+  const [productForm, setProductForm] = useState(blankProduct);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
   const isEditing = Boolean(editingId);
+  const isEditingProduct = Boolean(editingProductId);
 
   const authHeaders = useMemo(() => ({ Authorization: `Bearer ${token}` }), [token]);
 
@@ -120,10 +154,15 @@ export default function AdminDashboard() {
     setContactForm(await request("/api/admin/contact-info"));
   }
 
+  async function loadProducts() {
+    setError("");
+    setProducts(await request("/api/admin/products"));
+  }
+
   useEffect(() => {
     if (!token) return;
-    (isContactPage ? loadContact() : isAboutPage ? loadAbout() : loadProjects()).catch((caught) => setError(caught.message));
-  }, [token, isAboutPage, isContactPage]);
+    (isContactPage ? loadContact() : isAboutPage ? loadAbout() : isProductsPage ? loadProducts() : loadProjects()).catch((caught) => setError(caught.message));
+  }, [token, isAboutPage, isContactPage, isProductsPage]);
 
   async function submitLogin(event) {
     event.preventDefault();
@@ -158,7 +197,11 @@ export default function AdminDashboard() {
   function updateColor(index, field, value) {
     setForm((current) => ({
       ...current,
-      colors: current.colors.map((color, colorIndex) => (colorIndex === index ? { ...color, [field]: value } : color)),
+      colors: current.colors.map((color, colorIndex) => {
+        if (colorIndex !== index) return color;
+        if (field === "hex") return { ...color, hex: value, name: nearestColorName(value) };
+        return { ...color, [field]: value };
+      }),
     }));
   }
 
@@ -169,14 +212,60 @@ export default function AdminDashboard() {
     }));
   }
 
+  async function uploadFiles(files) {
+    const urls = [];
+    const failures = [];
+    for (const file of files) {
+      try {
+        const body = new FormData();
+        body.append("file", file);
+        const { url } = await request("/api/admin/uploads", { method: "POST", body });
+        urls.push(url);
+      } catch (caught) {
+        failures.push(`${file.name}: ${caught.message}`);
+      }
+    }
+    return { urls, failures };
+  }
+
   async function uploadImage(event) {
-    const file = event.target.files?.[0];
-    if (!file) return;
-    const body = new FormData();
-    body.append("file", file);
-    const { url } = await request("/api/admin/uploads", { method: "POST", body });
-    setForm((current) => ({ ...current, image: current.image || url, images: [...new Set([...(current.images || []), url])] }));
+    const files = Array.from(event.target.files || []);
+    if (!files.length) return;
+    setError("");
+    const { urls, failures } = await uploadFiles(files);
+    if (urls.length) {
+      setForm((current) => ({ ...current, image: current.image || urls[0], images: [...new Set([...(current.images || []), ...urls])] }));
+    }
+    if (failures.length) setError(`Some images couldn't be uploaded — ${failures.join("; ")}`);
     event.target.value = "";
+  }
+
+  function removeProjectImage(image) {
+    setForm((current) => ({
+      ...current,
+      images: current.images.filter((item) => item !== image),
+      image: current.image === image ? "" : current.image,
+    }));
+  }
+
+  async function uploadProductImage(event) {
+    const files = Array.from(event.target.files || []);
+    if (!files.length) return;
+    setError("");
+    const { urls, failures } = await uploadFiles(files);
+    if (urls.length) {
+      setProductForm((current) => ({ ...current, image: current.image || urls[0], images: [...new Set([...(current.images || []), ...urls])] }));
+    }
+    if (failures.length) setError(`Some images couldn't be uploaded — ${failures.join("; ")}`);
+    event.target.value = "";
+  }
+
+  function removeProductImage(image) {
+    setProductForm((current) => ({
+      ...current,
+      images: current.images.filter((item) => item !== image),
+      image: current.image === image ? "" : current.image,
+    }));
   }
 
   async function saveProject(event) {
@@ -205,6 +294,58 @@ export default function AdminDashboard() {
     if (editingId === id) {
       setEditingId("");
       setForm(blankProject);
+    }
+  }
+
+  function editProduct(product) {
+    setEditingProductId(product.id);
+    setProductForm({ ...blankProduct, ...product, images: product.images || [], colors: product.colors?.length ? product.colors : blankProduct.colors, sizes: product.sizes?.length ? product.sizes : blankProduct.sizes });
+    setMessage("");
+    setError("");
+  }
+
+  function updateProductField(field, value) {
+    setProductForm((current) => ({ ...current, [field]: value }));
+  }
+
+  function updateProductColor(index, field, value) {
+    setProductForm((current) => ({
+      ...current,
+      colors: current.colors.map((color, colorIndex) => {
+        if (colorIndex !== index) return color;
+        if (field === "hex") return { ...color, hex: value, name: nearestColorName(value) };
+        return { ...color, [field]: value };
+      }),
+    }));
+  }
+
+  async function saveProduct(event) {
+    event.preventDefault();
+    setError("");
+    const validationError = validateProduct(productForm);
+    if (validationError) {
+      setError(validationError);
+      return;
+    }
+    const payload = { ...productForm, price: Number(productForm.price), stock: Number(productForm.stock) };
+    const path = isEditingProduct ? `/api/admin/products/${editingProductId}` : "/api/admin/products";
+    await request(path, {
+      method: isEditingProduct ? "PUT" : "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    setMessage(isEditingProduct ? "Product updated." : "Product created.");
+    setEditingProductId("");
+    setProductForm(blankProduct);
+    await loadProducts();
+  }
+
+  async function removeProduct(id) {
+    await request(`/api/admin/products/${id}`, { method: "DELETE" });
+    setProducts((current) => current.filter((product) => product.id !== id));
+    if (editingProductId === id) {
+      setEditingProductId("");
+      setProductForm(blankProduct);
     }
   }
 
@@ -253,7 +394,8 @@ export default function AdminDashboard() {
         <div className="flex flex-wrap items-center gap-2">
           <a className={`${buttonClass} border px-4 py-2 font-bold ${isContactPage ? "border-star bg-star text-white" : "border-ink bg-white hover:border-star hover:text-star"}`} href="/admin/contact">Contact</a>
           <a className={`${buttonClass} border px-4 py-2 font-bold ${isAboutPage ? "border-star bg-star text-white" : "border-ink bg-white hover:border-star hover:text-star"}`} href="/admin/about">About</a>
-          <a className={`${buttonClass} border px-4 py-2 font-bold ${!isAboutPage && !isContactPage ? "border-star bg-star text-white" : "border-ink bg-white hover:border-star hover:text-star"}`} href="/admin">Projects</a>
+          <a className={`${buttonClass} border px-4 py-2 font-bold ${isProductsPage ? "border-star bg-star text-white" : "border-ink bg-white hover:border-star hover:text-star"}`} href="/admin/products">Products</a>
+          <a className={`${buttonClass} border px-4 py-2 font-bold ${!isAboutPage && !isContactPage && !isProductsPage ? "border-star bg-star text-white" : "border-ink bg-white hover:border-star hover:text-star"}`} href="/admin">Projects</a>
           <button className={`${buttonClass} border border-ink bg-white px-4 py-2 font-bold hover:border-star hover:text-star`} onClick={() => { localStorage.removeItem("oda-admin-token"); setToken(""); }} type="button">Log out</button>
         </div>
       </header>
@@ -319,6 +461,90 @@ export default function AdminDashboard() {
 
           <button className={`${buttonClass} bg-ink px-5 py-3 text-cream hover:bg-star`} type="submit">Save About section</button>
         </form>
+      ) : isProductsPage ? (
+      <div className="grid gap-6 lg:grid-cols-[minmax(18rem,25rem)_1fr]">
+        <aside className="rounded-lg border border-ink/15 bg-white p-4">
+          <div className="mb-4 flex items-center justify-between gap-3">
+            <h1 className="font-display text-4xl">Products</h1>
+            <button className={`${buttonClass} bg-star px-3 py-2 text-sm text-white hover:bg-wine`} onClick={() => { setEditingProductId(""); setProductForm(blankProduct); }} type="button">New</button>
+          </div>
+          <div className="grid gap-3">
+            {products.map((product) => (
+              <button className={`grid cursor-pointer grid-cols-[3.5rem_1fr_auto] gap-3 rounded-md border p-3 text-left transition hover:-translate-y-0.5 hover:border-star hover:shadow-[0_10px_24px_rgba(61,48,70,.12)] ${editingProductId === product.id ? "border-star bg-[#f9effb]" : "border-ink/10 bg-cream"}`} key={product.id} onClick={() => editProduct(product)} type="button">
+                {product.image ? (
+                  <img className="size-14 rounded object-cover" src={assetUrl(product.image)} alt="" />
+                ) : (
+                  <span className="grid size-14 place-items-center rounded bg-white/60 font-display text-2xl text-ink/25" aria-hidden="true">*</span>
+                )}
+                <span className="min-w-0 self-center">
+                  <b className="block truncate">{product.title}</b>
+                  <span className="block truncate text-sm text-[#6f6674]">{product.category}</span>
+                </span>
+                <span className="self-center text-sm font-extrabold text-rose">{product.price} kr</span>
+              </button>
+            ))}
+            {!products.length && <p className="text-sm font-bold text-[#6f6674]">No products yet. Create the first one.</p>}
+          </div>
+        </aside>
+
+        <form className="grid gap-5 rounded-lg border border-ink/15 bg-white p-5" onSubmit={saveProduct}>
+          <div className="flex flex-wrap items-start justify-between gap-4">
+            <div>
+              <p className="mb-2 text-xs font-extrabold uppercase text-wine">{isEditingProduct ? "Editing product" : "New product"}</p>
+              <h2 className="font-display text-5xl leading-none max-[620px]:text-4xl max-[380px]:text-3xl">{productForm.title || "Untitled piece"}</h2>
+            </div>
+            {isEditingProduct && <button className={`${buttonClass} border border-wine bg-white px-3 py-2 font-bold text-wine hover:bg-wine hover:text-white`} onClick={() => removeProduct(editingProductId)} type="button">Delete</button>}
+          </div>
+
+          {(message || error) && <p className={`rounded-md px-3 py-2 text-sm font-bold ${error ? "bg-[#ffe3e3] text-wine" : "bg-mint text-ink"}`}>{error || message}</p>}
+
+          <div className="grid gap-3 md:grid-cols-2">
+            <TextField label="Product title" required value={productForm.title} onChange={(event) => updateProductField("title", event.target.value)} />
+            <TextField label="Category" required value={productForm.category} onChange={(event) => updateProductField("category", event.target.value)} />
+            <TextField label="Price (kr)" type="number" min="0" required value={productForm.price} onChange={(event) => updateProductField("price", event.target.value)} />
+            <TextField label="Stock" type="number" min="0" required value={productForm.stock} onChange={(event) => updateProductField("stock", event.target.value)} />
+            <TextField label="Badge (optional)" value={productForm.badge} onChange={(event) => updateProductField("badge", event.target.value)} />
+            <TextField label="Sizes (comma separated)" required value={productForm.sizes.join(", ")} onChange={(event) => updateProductField("sizes", event.target.value.split(",").map((size) => size.trim()).filter(Boolean))} />
+          </div>
+
+          <TextAreaField label="Description" required value={productForm.description} onChange={(event) => updateProductField("description", event.target.value)} />
+
+          <section className="grid gap-3">
+            <label className="text-sm font-extrabold uppercase text-wine">Photos</label>
+            <input className="min-w-0 w-full rounded-md border border-dashed border-ink/30 bg-cream px-3 py-3 transition hover:border-star focus:outline-none focus:ring-2 focus:ring-star/20" type="file" accept="image/*" multiple onChange={uploadProductImage} />
+            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+              {(productForm.images || []).map((image) => (
+                <div className="overflow-hidden rounded-md border border-ink/15 bg-cream transition hover:-translate-y-0.5 hover:border-star hover:shadow-[0_10px_24px_rgba(61,48,70,.12)]" key={image}>
+                  <img className="h-36 w-full object-cover" src={assetUrl(image)} alt="" />
+                  <div className="flex gap-2 p-2">
+                    <button className="flex-1 rounded bg-ink px-2 py-1 text-xs font-bold text-cream transition hover:bg-star" onClick={() => updateProductField("image", image)} type="button">{productForm.image === image ? "Thumbnail" : "Use as thumbnail"}</button>
+                    <button className="rounded border border-ink/20 px-2 py-1 text-xs font-bold transition hover:border-wine hover:text-wine" onClick={() => removeProductImage(image)} type="button">Remove</button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </section>
+
+          <section className="grid gap-3">
+            <div className="flex items-center justify-between">
+              <label className="text-sm font-extrabold uppercase text-wine">Colors</label>
+              <button className={`${buttonClass} shrink-0 border border-ink bg-white px-3 py-1.5 text-sm font-bold hover:border-star hover:text-star`} onClick={() => updateProductField("colors", [...productForm.colors, { name: nearestColorName("#f2b7c6"), hex: "#f2b7c6" }])} type="button">Add color</button>
+            </div>
+            {!productForm.colors?.length && <p className="text-sm font-bold text-wine">Add at least one color.</p>}
+            <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+              {productForm.colors.map((color, index) => (
+                <div className="grid grid-cols-[3rem_1fr_auto] gap-2 rounded-md border border-ink/15 bg-cream p-2 transition hover:border-star max-[380px]:grid-cols-[3rem_1fr]" key={`${color.name}-${index}`}>
+                  <input className="h-10 w-full cursor-pointer border-0 bg-transparent" type="color" value={color.hex} onChange={(event) => updateProductColor(index, "hex", event.target.value)} />
+                  <input className="min-w-0 rounded border border-ink/15 bg-white px-2 transition hover:border-star focus:border-star focus:outline-none focus:ring-2 focus:ring-star/20" aria-label="Color name" value={color.name} onChange={(event) => updateProductColor(index, "name", event.target.value)} />
+                  <button className="rounded border border-ink/20 px-2 text-sm font-bold transition hover:border-wine hover:text-wine max-[380px]:col-span-2 max-[380px]:min-h-10" onClick={() => updateProductField("colors", productForm.colors.filter((_, colorIndex) => colorIndex !== index))} type="button">Remove</button>
+                </div>
+              ))}
+            </div>
+          </section>
+
+          <button className={`${buttonClass} bg-ink px-5 py-3 text-cream hover:bg-star`} type="submit">{isEditingProduct ? "Save product" : "Create product"}</button>
+        </form>
+      </div>
       ) : (
       <div className="grid gap-6 lg:grid-cols-[minmax(18rem,25rem)_1fr]">
         <aside className="rounded-lg border border-ink/15 bg-white p-4">
@@ -374,7 +600,7 @@ export default function AdminDashboard() {
           <section className="grid gap-3">
             <label className="text-sm font-extrabold uppercase text-wine">Images</label>
             {!form.images?.length && <p className="text-sm font-bold text-wine">Upload at least one image.</p>}
-            <input className="min-w-0 w-full rounded-md border border-dashed border-ink/30 bg-cream px-3 py-3 transition hover:border-star focus:outline-none focus:ring-2 focus:ring-star/20" type="file" accept="image/*" onChange={uploadImage} />
+            <input className="min-w-0 w-full rounded-md border border-dashed border-ink/30 bg-cream px-3 py-3 transition hover:border-star focus:outline-none focus:ring-2 focus:ring-star/20" type="file" accept="image/*" multiple onChange={uploadImage} />
             <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
               {(form.images || []).map((image) => (
                 <div className="overflow-hidden rounded-md border border-ink/15 bg-cream transition hover:-translate-y-0.5 hover:border-star hover:shadow-[0_10px_24px_rgba(61,48,70,.12)]" key={image}>
@@ -384,7 +610,7 @@ export default function AdminDashboard() {
                     <button
                       className="rounded border border-ink/20 px-2 py-1 text-xs font-bold transition hover:border-wine hover:text-wine disabled:cursor-not-allowed disabled:opacity-45 disabled:hover:border-ink/20 disabled:hover:text-ink"
                       disabled={form.images.length <= 1}
-                      onClick={() => updateField("images", form.images.filter((item) => item !== image))}
+                      onClick={() => removeProjectImage(image)}
                       type="button"
                     >
                       Remove
@@ -398,7 +624,7 @@ export default function AdminDashboard() {
           <section className="grid gap-3">
             <div className="flex items-center justify-between">
               <label className="text-sm font-extrabold uppercase text-wine">Colors</label>
-              <button className={`${buttonClass} shrink-0 border border-ink bg-white px-3 py-1.5 text-sm font-bold hover:border-star hover:text-star`} onClick={() => updateField("colors", [...form.colors, { name: "New color", hex: "#f2b7c6" }])} type="button">Add color</button>
+              <button className={`${buttonClass} shrink-0 border border-ink bg-white px-3 py-1.5 text-sm font-bold hover:border-star hover:text-star`} onClick={() => updateField("colors", [...form.colors, { name: nearestColorName("#f2b7c6"), hex: "#f2b7c6" }])} type="button">Add color</button>
             </div>
             {!form.colors?.length && <p className="text-sm font-bold text-wine">Add at least one color.</p>}
             <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
