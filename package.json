@@ -8,12 +8,14 @@
     "preview": "vite preview --host 0.0.0.0"
   },
   "dependencies": {
+    "@stripe/stripe-js": "^4.10.0",
     "@tailwindcss/vite": "^4.1.0",
     "@vitejs/plugin-react": "^4.3.4",
     "vite": "^6.0.7",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "framer-motion": "^11.15.0",
+    "nearest-color": "^0.4.4",
     "three": "^0.171.0",
     "tailwindcss": "^4.1.0"
   },

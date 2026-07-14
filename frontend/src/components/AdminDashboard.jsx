@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { motion } from "framer-motion";
 import { assetUrl } from "../api";
+import { nearestColorName } from "../lib/colorNames";
 
 const API_BASE = import.meta.env.VITE_API_URL || "";
 const blankProject = {
@@ -42,6 +43,7 @@ const blankProduct = {
   badge: "",
   stock: "",
   image: "",
+  images: [],
 };
 const inputClass = "min-w-0 w-full rounded-md border border-ink/20 bg-cream px-3 py-2 transition hover:border-star/70 focus:border-star focus:bg-white focus:outline-none focus:ring-2 focus:ring-star/20";
 const labelClass = "grid gap-1.5 text-sm font-bold text-[#625768]";
@@ -195,7 +197,11 @@ export default function AdminDashboard() {
   function updateColor(index, field, value) {
     setForm((current) => ({
       ...current,
-      colors: current.colors.map((color, colorIndex) => (colorIndex === index ? { ...color, [field]: value } : color)),
+      colors: current.colors.map((color, colorIndex) => {
+        if (colorIndex !== index) return color;
+        if (field === "hex") return { ...color, hex: value, name: nearestColorName(value) };
+        return { ...color, [field]: value };
+      }),
     }));
   }
 
@@ -206,24 +212,60 @@ export default function AdminDashboard() {
     }));
   }
 
+  async function uploadFiles(files) {
+    const urls = [];
+    const failures = [];
+    for (const file of files) {
+      try {
+        const body = new FormData();
+        body.append("file", file);
+        const { url } = await request("/api/admin/uploads", { method: "POST", body });
+        urls.push(url);
+      } catch (caught) {
+        failures.push(`${file.name}: ${caught.message}`);
+      }
+    }
+    return { urls, failures };
+  }
+
   async function uploadImage(event) {
-    const file = event.target.files?.[0];
-    if (!file) return;
-    const body = new FormData();
-    body.append("file", file);
-    const { url } = await request("/api/admin/uploads", { method: "POST", body });
-    setForm((current) => ({ ...current, image: current.image || url, images: [...new Set([...(current.images || []), url])] }));
+    const files = Array.from(event.target.files || []);
+    if (!files.length) return;
+    setError("");
+    const { urls, failures } = await uploadFiles(files);
+    if (urls.length) {
+      setForm((current) => ({ ...current, image: current.image || urls[0], images: [...new Set([...(current.images || []), ...urls])] }));
+    }
+    if (failures.length) setError(`Some images couldn't be uploaded — ${failures.join("; ")}`);
     event.target.value = "";
   }
 
+  function removeProjectImage(image) {
+    setForm((current) => ({
+      ...current,
+      images: current.images.filter((item) => item !== image),
+      image: current.image === image ? "" : current.image,
+    }));
+  }
+
   async function uploadProductImage(event) {
-    const file = event.target.files?.[0];
-    if (!file) return;
-    const body = new FormData();
-    body.append("file", file);
-    const { url } = await request("/api/admin/uploads", { method: "POST", body });
-    setProductForm((current) => ({ ...current, image: url }));
+    const files = Array.from(event.target.files || []);
+    if (!files.length) return;
+    setError("");
+    const { urls, failures } = await uploadFiles(files);
+    if (urls.length) {
+      setProductForm((current) => ({ ...current, image: current.image || urls[0], images: [...new Set([...(current.images || []), ...urls])] }));
+    }
+    if (failures.length) setError(`Some images couldn't be uploaded — ${failures.join("; ")}`);
     event.target.value = "";
+  }
+
+  function removeProductImage(image) {
+    setProductForm((current) => ({
+      ...current,
+      images: current.images.filter((item) => item !== image),
+      image: current.image === image ? "" : current.image,
+    }));
   }
 
   async function saveProject(event) {
@@ -257,7 +299,7 @@ export default function AdminDashboard() {
 
   function editProduct(product) {
     setEditingProductId(product.id);
-    setProductForm({ ...blankProduct, ...product, colors: product.colors?.length ? product.colors : blankProduct.colors, sizes: product.sizes?.length ? product.sizes : blankProduct.sizes });
+    setProductForm({ ...blankProduct, ...product, images: product.images || [], colors: product.colors?.length ? product.colors : blankProduct.colors, sizes: product.sizes?.length ? product.sizes : blankProduct.sizes });
     setMessage("");
     setError("");
   }
@@ -269,7 +311,11 @@ export default function AdminDashboard() {
   function updateProductColor(index, field, value) {
     setProductForm((current) => ({
       ...current,
-      colors: current.colors.map((color, colorIndex) => (colorIndex === index ? { ...color, [field]: value } : color)),
+      colors: current.colors.map((color, colorIndex) => {
+        if (colorIndex !== index) return color;
+        if (field === "hex") return { ...color, hex: value, name: nearestColorName(value) };
+        return { ...color, [field]: value };
+      }),
     }));
   }
 
@@ -464,20 +510,25 @@ export default function AdminDashboard() {
           <TextAreaField label="Description" required value={productForm.description} onChange={(event) => updateProductField("description", event.target.value)} />
 
           <section className="grid gap-3">
-            <label className="text-sm font-extrabold uppercase text-wine">Photo</label>
-            <input className="min-w-0 w-full rounded-md border border-dashed border-ink/30 bg-cream px-3 py-3 transition hover:border-star focus:outline-none focus:ring-2 focus:ring-star/20" type="file" accept="image/*" onChange={uploadProductImage} />
-            {productForm.image && (
-              <div className="w-40 overflow-hidden rounded-md border border-ink/15 bg-cream">
-                <img className="aspect-square w-full object-cover" src={assetUrl(productForm.image)} alt="" />
-                <button className="w-full px-2 py-1.5 text-xs font-bold text-wine transition hover:bg-[#ffe3e3]" onClick={() => updateProductField("image", "")} type="button">Remove photo</button>
-              </div>
-            )}
+            <label className="text-sm font-extrabold uppercase text-wine">Photos</label>
+            <input className="min-w-0 w-full rounded-md border border-dashed border-ink/30 bg-cream px-3 py-3 transition hover:border-star focus:outline-none focus:ring-2 focus:ring-star/20" type="file" accept="image/*" multiple onChange={uploadProductImage} />
+            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+              {(productForm.images || []).map((image) => (
+                <div className="overflow-hidden rounded-md border border-ink/15 bg-cream transition hover:-translate-y-0.5 hover:border-star hover:shadow-[0_10px_24px_rgba(61,48,70,.12)]" key={image}>
+                  <img className="h-36 w-full object-cover" src={assetUrl(image)} alt="" />
+                  <div className="flex gap-2 p-2">
+                    <button className="flex-1 rounded bg-ink px-2 py-1 text-xs font-bold text-cream transition hover:bg-star" onClick={() => updateProductField("image", image)} type="button">{productForm.image === image ? "Thumbnail" : "Use as thumbnail"}</button>
+                    <button className="rounded border border-ink/20 px-2 py-1 text-xs font-bold transition hover:border-wine hover:text-wine" onClick={() => removeProductImage(image)} type="button">Remove</button>
+                  </div>
+                </div>
+              ))}
+            </div>
           </section>
 
           <section className="grid gap-3">
             <div className="flex items-center justify-between">
               <label className="text-sm font-extrabold uppercase text-wine">Colors</label>
-              <button className={`${buttonClass} shrink-0 border border-ink bg-white px-3 py-1.5 text-sm font-bold hover:border-star hover:text-star`} onClick={() => updateProductField("colors", [...productForm.colors, { name: "New color", hex: "#f2b7c6" }])} type="button">Add color</button>
+              <button className={`${buttonClass} shrink-0 border border-ink bg-white px-3 py-1.5 text-sm font-bold hover:border-star hover:text-star`} onClick={() => updateProductField("colors", [...productForm.colors, { name: nearestColorName("#f2b7c6"), hex: "#f2b7c6" }])} type="button">Add color</button>
             </div>
             {!productForm.colors?.length && <p className="text-sm font-bold text-wine">Add at least one color.</p>}
             <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
@@ -549,7 +600,7 @@ export default function AdminDashboard() {
           <section className="grid gap-3">
             <label className="text-sm font-extrabold uppercase text-wine">Images</label>
             {!form.images?.length && <p className="text-sm font-bold text-wine">Upload at least one image.</p>}
-            <input className="min-w-0 w-full rounded-md border border-dashed border-ink/30 bg-cream px-3 py-3 transition hover:border-star focus:outline-none focus:ring-2 focus:ring-star/20" type="file" accept="image/*" onChange={uploadImage} />
+            <input className="min-w-0 w-full rounded-md border border-dashed border-ink/30 bg-cream px-3 py-3 transition hover:border-star focus:outline-none focus:ring-2 focus:ring-star/20" type="file" accept="image/*" multiple onChange={uploadImage} />
             <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
               {(form.images || []).map((image) => (
                 <div className="overflow-hidden rounded-md border border-ink/15 bg-cream transition hover:-translate-y-0.5 hover:border-star hover:shadow-[0_10px_24px_rgba(61,48,70,.12)]" key={image}>
@@ -559,7 +610,7 @@ export default function AdminDashboard() {
                     <button
                       className="rounded border border-ink/20 px-2 py-1 text-xs font-bold transition hover:border-wine hover:text-wine disabled:cursor-not-allowed disabled:opacity-45 disabled:hover:border-ink/20 disabled:hover:text-ink"
                       disabled={form.images.length <= 1}
-                      onClick={() => updateField("images", form.images.filter((item) => item !== image))}
+                      onClick={() => removeProjectImage(image)}
                       type="button"
                     >
                       Remove
@@ -573,7 +624,7 @@ export default function AdminDashboard() {
           <section className="grid gap-3">
             <div className="flex items-center justify-between">
               <label className="text-sm font-extrabold uppercase text-wine">Colors</label>
-              <button className={`${buttonClass} shrink-0 border border-ink bg-white px-3 py-1.5 text-sm font-bold hover:border-star hover:text-star`} onClick={() => updateField("colors", [...form.colors, { name: "New color", hex: "#f2b7c6" }])} type="button">Add color</button>
+              <button className={`${buttonClass} shrink-0 border border-ink bg-white px-3 py-1.5 text-sm font-bold hover:border-star hover:text-star`} onClick={() => updateField("colors", [...form.colors, { name: nearestColorName("#f2b7c6"), hex: "#f2b7c6" }])} type="button">Add color</button>
             </div>
             {!form.colors?.length && <p className="text-sm font-bold text-wine">Add at least one color.</p>}
             <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">

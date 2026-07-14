@@ -29,6 +29,14 @@ admin_password = os.getenv("ADMIN_PASSWORD", "")
 contact_email_to = os.getenv("CONTACT_EMAIL_TO", "oda.hennissen@gmail.com")
 instagram_access_token = os.getenv("INSTAGRAM_ACCESS_TOKEN", "")
 instagram_post_limit = int(os.getenv("INSTAGRAM_POST_LIMIT", "8"))
+stripe_secret_key = os.getenv("STRIPE_SECRET_KEY", "")
+vipps_client_id = os.getenv("VIPPS_CLIENT_ID", "")
+vipps_client_secret = os.getenv("VIPPS_CLIENT_SECRET", "")
+vipps_subscription_key = os.getenv("VIPPS_SUBSCRIPTION_KEY", "")
+vipps_msn = os.getenv("VIPPS_MSN", "")
+vipps_base_url = os.getenv("VIPPS_BASE_URL", "https://apitest.vipps.no")
+vipps_configured = bool(vipps_client_id and vipps_client_secret and vipps_subscription_key and vipps_msn)
+vipps_token_cache = {"expires_at": 0.0, "token": ""}
 admin_session_seconds = int(os.getenv("ADMIN_SESSION_SECONDS", str(8 * 60 * 60)))
 admin_tokens = {}
 rate_limits = defaultdict(deque)
@@ -101,13 +109,18 @@ with sqlite3.connect(database_path) as database:
             sizes TEXT NOT NULL,
             badge TEXT NOT NULL,
             stock INTEGER NOT NULL,
-            image TEXT NOT NULL DEFAULT ''
+            image TEXT NOT NULL DEFAULT '',
+            images TEXT NOT NULL DEFAULT '[]'
         )
         """
     )
     product_columns = {row[1] for row in database.execute("PRAGMA table_info(products)")}
     if "image" not in product_columns:
         database.execute("ALTER TABLE products ADD COLUMN image TEXT NOT NULL DEFAULT ''")
+    if "images" not in product_columns:
+        database.execute("ALTER TABLE products ADD COLUMN images TEXT NOT NULL DEFAULT '[]'")
+        for row_id, image in database.execute("SELECT id, image FROM products WHERE image != ''").fetchall():
+            database.execute("UPDATE products SET images = ? WHERE id = ?", (json.dumps([image]), row_id))
 
 app.mount("/api/uploads", StaticFiles(directory=upload_dir), name="uploads")
 
@@ -160,13 +173,14 @@ CONTACT_INFO = {
     "success": "Thanks {name}, your note has been received.",
 }
 
-PRODUCT_COLUMNS = ("id", "title", "category", "price", "description", "colors", "sizes", "badge", "stock", "image")
+PRODUCT_COLUMNS = ("id", "title", "category", "price", "description", "colors", "sizes", "badge", "stock", "image", "images")
 
 
 def product_from_row(row):
     product = dict(zip(PRODUCT_COLUMNS, row, strict=True))
     product["colors"] = json.loads(product["colors"])
     product["sizes"] = json.loads(product["sizes"])
+    product["images"] = json.loads(product["images"])
     return product
 
 
@@ -178,6 +192,10 @@ def load_products():
 
 def save_product(database, product, product_id=None):
     final_id = product_id or product.id or unique_id(database, "products", product.title, "product")
+    images = [image for image in product.images if image]
+    if product.image and product.image not in images:
+        images.insert(0, product.image)
+    cover = product.image or (images[0] if images else "")
     values = {
         "id": final_id,
         "title": product.title,
@@ -188,18 +206,19 @@ def save_product(database, product, product_id=None):
         "sizes": json.dumps(product.sizes),
         "badge": product.badge,
         "stock": product.stock,
-        "image": product.image,
+        "image": cover,
+        "images": json.dumps(images),
     }
     database.execute(
         """
         INSERT OR REPLACE INTO products
-        (id, title, category, price, description, colors, sizes, badge, stock, image)
+        (id, title, category, price, description, colors, sizes, badge, stock, image, images)
         VALUES
-        (:id, :title, :category, :price, :description, :colors, :sizes, :badge, :stock, :image)
+        (:id, :title, :category, :price, :description, :colors, :sizes, :badge, :stock, :image, :images)
         """,
         values,
     )
-    return {**values, "colors": json.loads(values["colors"]), "sizes": json.loads(values["sizes"])}
+    return {**values, "colors": json.loads(values["colors"]), "sizes": json.loads(values["sizes"]), "images": json.loads(values["images"])}
 
 
 PROJECT_COLUMNS = (
@@ -338,6 +357,7 @@ class ProductPayload(BaseModel):
     badge: str = Field(default="", max_length=40)
     stock: int = Field(ge=0, le=100000)
     image: str = Field(default="", max_length=300)
+    images: list[str] = Field(default_factory=list)
 
     @field_validator("*", mode="before")
     @classmethod
@@ -347,6 +367,14 @@ class ProductPayload(BaseModel):
         if isinstance(value, list):
             return [item.strip() if isinstance(item, str) else item for item in value]
         return value
+
+    @model_validator(mode="after")
+    def normalize_product_images(self):
+        self.images = [image for image in self.images if image]
+        if self.image and self.image not in self.images:
+            self.images.insert(0, self.image)
+        self.image = self.image or (self.images[0] if self.images else "")
+        return self
 
 
 class AboutDetail(BaseModel):
@@ -621,6 +649,171 @@ def create_order(order: OrderPayload, request: Request = None):
     except (OSError, RuntimeError, smtplib.SMTPException):
         pass
     return {"ok": True, "id": order_id, "subtotal": subtotal}
+
+
+class PaymentItemsPayload(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    items: list[OrderItem] = Field(min_length=1, max_length=50)
+
+
+class VippsPaymentPayload(PaymentItemsPayload):
+    return_url: str = Field(min_length=8, max_length=300)
+
+
+def revalidated_subtotal(items: list[OrderItem]) -> int:
+    catalog = {product["id"]: product for product in load_products()}
+    for item in items:
+        product = catalog.get(item.id)
+        if not product or item.price != product["price"] or item.size not in product["sizes"]:
+            raise HTTPException(status_code=400, detail="One of the items in your basket is no longer available")
+    subtotal = sum(item.price * item.quantity for item in items)
+    if subtotal <= 0:
+        raise HTTPException(status_code=400, detail="Your basket is empty")
+    return subtotal
+
+
+def call_stripe(path: str, body: dict | None = None, method: str = "POST"):
+    request_obj = urllib.request.Request(
+        f"https://api.stripe.com/v1/{path}",
+        data=urllib.parse.urlencode(body).encode() if body is not None else None,
+        headers={"Authorization": f"Bearer {stripe_secret_key}"},
+        method=method,
+    )
+    try:
+        with urllib.request.urlopen(request_obj, timeout=8) as response:
+            return json.load(response)
+    except (OSError, urllib.error.URLError):
+        raise HTTPException(status_code=502, detail="Could not reach payment provider")
+
+
+def vipps_access_token() -> str:
+    if vipps_token_cache["expires_at"] > time.monotonic():
+        return vipps_token_cache["token"]
+    request_obj = urllib.request.Request(
+        f"{vipps_base_url}/accesstoken/get",
+        data=b"",
+        headers={
+            "client_id": vipps_client_id,
+            "client_secret": vipps_client_secret,
+            "Ocp-Apim-Subscription-Key": vipps_subscription_key,
+        },
+        method="POST",
+    )
+    try:
+        with urllib.request.urlopen(request_obj, timeout=8) as response:
+            payload = json.load(response)
+    except (OSError, urllib.error.URLError):
+        raise HTTPException(status_code=502, detail="Could not reach Vipps")
+    vipps_token_cache.update({
+        "token": payload["access_token"],
+        "expires_at": time.monotonic() + max(60, int(payload.get("expires_in", 3600)) - 120),
+    })
+    return vipps_token_cache["token"]
+
+
+def call_vipps(path: str, body: dict | None = None, method: str = "POST", idempotent: bool = False):
+    headers = {
+        "Authorization": f"Bearer {vipps_access_token()}",
+        "Ocp-Apim-Subscription-Key": vipps_subscription_key,
+        "Merchant-Serial-Number": vipps_msn,
+        "Content-Type": "application/json",
+    }
+    if idempotent:
+        headers["Idempotency-Key"] = secrets.token_hex(16)
+    request_obj = urllib.request.Request(
+        f"{vipps_base_url}/{path}",
+        data=json.dumps(body).encode() if body is not None else None,
+        headers=headers,
+        method=method,
+    )
+    try:
+        with urllib.request.urlopen(request_obj, timeout=8) as response:
+            return json.load(response)
+    except (OSError, urllib.error.URLError):
+        raise HTTPException(status_code=502, detail="Could not reach Vipps")
+
+
+@app.get("/api/payments/config")
+def payments_config():
+    return {
+        "applePay": bool(stripe_secret_key),
+        "klarna": bool(stripe_secret_key),
+        "vipps": vipps_configured,
+    }
+
+
+@app.post("/api/payments/apple-pay-intent", status_code=201)
+def create_apple_pay_intent(payload: PaymentItemsPayload, request: Request = None):
+    if not stripe_secret_key:
+        raise HTTPException(status_code=503, detail="Apple Pay is not configured")
+    check_rate_limit("apple-pay-intent", client_key(request), 10, 10 * 60)
+    subtotal = revalidated_subtotal(payload.items)
+    # Stripe amounts are in the currency's smallest unit; NOK has 2 decimals (ore), so kr * 100.
+    result = call_stripe("payment_intents", {
+        "amount": subtotal * 100,
+        "currency": "nok",
+        "payment_method_types[]": "card",
+    })
+    return {"client_secret": result["client_secret"], "subtotal": subtotal}
+
+
+@app.post("/api/payments/klarna-intent", status_code=201)
+def create_klarna_intent(payload: PaymentItemsPayload, request: Request = None):
+    if not stripe_secret_key:
+        raise HTTPException(status_code=503, detail="Klarna is not configured")
+    check_rate_limit("klarna-intent", client_key(request), 10, 10 * 60)
+    subtotal = revalidated_subtotal(payload.items)
+    result = call_stripe("payment_intents", {
+        "amount": subtotal * 100,
+        "currency": "nok",
+        "payment_method_types[]": "klarna",
+    })
+    return {"client_secret": result["client_secret"], "subtotal": subtotal}
+
+
+@app.get("/api/payments/klarna-status")
+def klarna_status(payment_intent: str, request: Request = None):
+    if not stripe_secret_key:
+        raise HTTPException(status_code=503, detail="Klarna is not configured")
+    check_rate_limit("klarna-status", client_key(request), 20, 10 * 60)
+    if not re.fullmatch(r"pi_[A-Za-z0-9]+", payment_intent):
+        raise HTTPException(status_code=400, detail="Invalid payment reference")
+    result = call_stripe(f"payment_intents/{payment_intent}", method="GET")
+    return {"status": result.get("status", "unknown")}
+
+
+@app.post("/api/payments/vipps-payment", status_code=201)
+def create_vipps_payment(payload: VippsPaymentPayload, request: Request = None):
+    if not vipps_configured:
+        raise HTTPException(status_code=503, detail="Vipps is not configured")
+    if not payload.return_url.startswith(("http://", "https://")):
+        raise HTTPException(status_code=400, detail="Invalid return URL")
+    check_rate_limit("vipps-payment", client_key(request), 10, 10 * 60)
+    subtotal = revalidated_subtotal(payload.items)
+    reference = f"OK-{datetime.now(UTC).strftime('%y%m%d')}-{secrets.token_hex(6)}"
+
+    result = call_vipps("epayment/v1/payments", {
+        "amount": {"currency": "NOK", "value": subtotal * 100},
+        "paymentMethod": {"type": "WALLET"},
+        "userFlow": "WEB_REDIRECT",
+        "returnUrl": payload.return_url,
+        "reference": reference,
+        "paymentDescription": "Oda Knits order",
+    }, idempotent=True)
+
+    return {"redirect_url": result["redirectUrl"], "reference": reference, "subtotal": subtotal}
+
+
+@app.get("/api/payments/vipps-status")
+def vipps_status(reference: str, request: Request = None):
+    if not vipps_configured:
+        raise HTTPException(status_code=503, detail="Vipps is not configured")
+    check_rate_limit("vipps-status", client_key(request), 20, 10 * 60)
+    if not re.fullmatch(r"OK-\d{6}-[0-9a-f]{12}", reference):
+        raise HTTPException(status_code=400, detail="Invalid payment reference")
+    result = call_vipps(f"epayment/v1/payments/{reference}", method="GET")
+    return {"state": result.get("state", "UNKNOWN")}
 
 
 @app.get("/api/instagram")

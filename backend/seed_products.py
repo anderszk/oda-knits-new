@@ -123,15 +123,21 @@ def seed(database_path):
                 sizes TEXT NOT NULL,
                 badge TEXT NOT NULL,
                 stock INTEGER NOT NULL,
-                image TEXT NOT NULL DEFAULT ''
+                image TEXT NOT NULL DEFAULT '',
+                images TEXT NOT NULL DEFAULT '[]'
             )
             """
         )
         database.executemany(
-            "INSERT OR IGNORE INTO products (id, title, category, price, description, colors, sizes, badge, stock, image) "
-            "VALUES (:id, :title, :category, :price, :description, :colors, :sizes, :badge, :stock, :image)",
+            "INSERT OR IGNORE INTO products (id, title, category, price, description, colors, sizes, badge, stock, image, images) "
+            "VALUES (:id, :title, :category, :price, :description, :colors, :sizes, :badge, :stock, :image, :images)",
             [
-                {**product, "colors": json.dumps(product["colors"]), "sizes": json.dumps(product["sizes"])}
+                {
+                    **product,
+                    "colors": json.dumps(product["colors"]),
+                    "sizes": json.dumps(product["sizes"]),
+                    "images": json.dumps([product["image"]] if product["image"] else []),
+                }
                 for product in SEED_PRODUCTS
             ],
         )

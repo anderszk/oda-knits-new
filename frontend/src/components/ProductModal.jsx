@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { motion, useDragControls } from "framer-motion";
+import { AnimatePresence, motion, useDragControls } from "framer-motion";
 import { assetUrl } from "../api";
 import { useCart } from "../context/CartContext";
 import { formatPrice } from "../lib/format";
@@ -16,12 +16,15 @@ function swatchStyle(colors) {
 export default function ProductModal({ product, onClose, onBuyNow }) {
   const closeButton = useRef(null);
   const modal = useRef(null);
+  const touchStartX = useRef(null);
   const { addItem } = useCart();
   const [size, setSize] = useState(product.sizes?.[0] || "");
   const [quantity, setQuantity] = useState(1);
   const [added, setAdded] = useState(false);
   const [closingBySwipe, setClosingBySwipe] = useState(false);
+  const [imageIndex, setImageIndex] = useState(0);
   const colors = product.colors || [];
+  const images = product.images?.length ? product.images : [product.image].filter(Boolean);
   const lowStock = typeof product.stock === "number" && product.stock <= 3;
   const mobile = useMobileMotion();
   const dragControls = useDragControls();
@@ -36,10 +39,22 @@ export default function ProductModal({ product, onClose, onBuyNow }) {
     }
   };
 
+  const changeImage = (step) => {
+    setImageIndex((current) => (current + step + images.length) % images.length);
+  };
+
+  const onTouchEnd = (event) => {
+    if (touchStartX.current === null || images.length < 2) return;
+    const distance = event.changedTouches[0].clientX - touchStartX.current;
+    touchStartX.current = null;
+    if (Math.abs(distance) > 48) changeImage(distance > 0 ? -1 : 1);
+  };
+
   useEffect(() => {
     setSize(product.sizes?.[0] || "");
     setQuantity(1);
     setAdded(false);
+    setImageIndex(0);
   }, [product.id]);
 
   useEffect(() => {
@@ -48,6 +63,14 @@ export default function ProductModal({ product, onClose, onBuyNow }) {
       if (event.key === "Escape") {
         event.preventDefault();
         onClose();
+      }
+      if (images.length > 1 && event.key === "ArrowLeft") {
+        event.preventDefault();
+        changeImage(-1);
+      }
+      if (images.length > 1 && event.key === "ArrowRight") {
+        event.preventDefault();
+        changeImage(1);
       }
       if (event.key === "Tab") {
         const focusable = [...(modal.current?.querySelectorAll("button, input") || [])];
@@ -70,7 +93,7 @@ export default function ProductModal({ product, onClose, onBuyNow }) {
       window.removeEventListener("keydown", onKeyDown);
       previousFocus?.focus();
     };
-  }, [onClose]);
+  }, [images.length, onClose]);
 
   const handleAddToBasket = () => {
     addItem(product, size, quantity);
@@ -116,14 +139,45 @@ export default function ProductModal({ product, onClose, onBuyNow }) {
             <path d="M7 7l10 10M17 7 7 17" fill="none" stroke="currentColor" strokeLinecap="round" strokeWidth="1.9" />
           </svg>
         </button>
-        <div className="relative flex min-h-full items-center justify-center overflow-hidden max-[620px]:h-[30svh] max-[620px]:min-h-[13rem]" style={product.image ? undefined : swatchStyle(colors)}>
-          {product.image ? (
-            <img className="absolute inset-0 size-full object-cover" src={assetUrl(product.image)} alt="" />
+        <div
+          className="relative flex min-h-full items-center justify-center overflow-hidden max-[620px]:h-[30svh] max-[620px]:min-h-[13rem]"
+          style={images.length ? undefined : swatchStyle(colors)}
+          onTouchStart={(event) => { touchStartX.current = event.touches[0].clientX; }}
+          onTouchEnd={onTouchEnd}
+        >
+          {images.length ? (
+            <AnimatePresence mode="wait">
+              <motion.img
+                className="absolute inset-0 size-full object-cover"
+                key={images[imageIndex]}
+                src={assetUrl(images[imageIndex])}
+                alt={`${product.title}, view ${imageIndex + 1} of ${images.length}`}
+                initial={{ opacity: 0, scale: 1.02 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.22 }}
+              />
+            </AnimatePresence>
           ) : (
             <span className="select-none font-display text-[7rem] leading-none text-white/25 max-[900px]:text-[5.5rem]" aria-hidden="true">*</span>
           )}
           {product.badge && <span className="absolute top-3 left-3 rounded-full border border-ink bg-cream px-2 py-1 text-[0.72rem] font-extrabold">{product.badge}</span>}
           {lowStock && <span className="absolute bottom-3 left-3 rounded-full border border-ink bg-[#fff3d6] px-2 py-1 text-[0.72rem] font-extrabold">Only {product.stock} left</span>}
+          {images.length > 1 && (
+            <>
+              <button className="absolute top-1/2 left-3 z-10 flex size-9 -translate-y-1/2 cursor-pointer items-center justify-center rounded-full border border-ink bg-cream/90 text-ink hover:bg-[#f6dc74] focus-visible:bg-[#f6dc74] max-[620px]:size-8" type="button" onClick={() => changeImage(-1)} aria-label="Previous image">
+                <svg className="size-4" viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M15 18l-6-6 6-6" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.4" />
+                </svg>
+              </button>
+              <button className="absolute top-1/2 right-3 z-10 flex size-9 -translate-y-1/2 cursor-pointer items-center justify-center rounded-full border border-ink bg-cream/90 text-ink hover:bg-[#f6dc74] focus-visible:bg-[#f6dc74] max-[620px]:size-8" type="button" onClick={() => changeImage(1)} aria-label="Next image">
+                <svg className="size-4" viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M9 6l6 6-6 6" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.4" />
+                </svg>
+              </button>
+              <div className="absolute bottom-3 left-1/2 z-10 -translate-x-1/2 rounded-full bg-ink/80 px-2.5 py-1 text-xs font-extrabold text-cream" aria-live="polite">{imageIndex + 1} / {images.length}</div>
+            </>
+          )}
         </div>
         <div className="px-10 pt-14 pb-10 max-[900px]:px-6 max-[900px]:pt-14 max-[900px]:pb-6 max-[620px]:overflow-y-auto max-[620px]:px-4 max-[620px]:pt-0 max-[620px]:pb-8">
           <div className="max-[620px]:sticky max-[620px]:top-0 max-[620px]:z-10 max-[620px]:-mx-4 max-[620px]:border-b max-[620px]:border-ink/10 max-[620px]:bg-cream max-[620px]:px-4 max-[620px]:pt-5 max-[620px]:pb-4">
@@ -139,6 +193,16 @@ export default function ProductModal({ product, onClose, onBuyNow }) {
                 <span className="flex items-center gap-1.5 rounded-full border border-ink/10 bg-white px-2 py-1 text-xs font-bold" key={color.name}>
                   <i className="size-4 rounded-full border border-ink/20" style={{ background: color.hex }} />{color.name}
                 </span>
+              ))}
+            </div>
+          )}
+
+          {images.length > 1 && (
+            <div className="mt-5 flex gap-2 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" aria-label="Choose product image">
+              {images.map((image, index) => (
+                <button className={`size-13 shrink-0 cursor-pointer overflow-hidden rounded-md border-2 bg-transparent p-0 ${index === imageIndex ? "border-wine" : "border-transparent"}`} type="button" key={image} onClick={() => setImageIndex(index)} aria-label={`Show image ${index + 1}`}>
+                  <img className="size-full object-cover" src={assetUrl(image)} alt="" />
+                </button>
               ))}
             </div>
           )}
