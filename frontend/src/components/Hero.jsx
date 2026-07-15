@@ -31,14 +31,15 @@ export default function Hero() {
         <YarnScene />
       </motion.div>
       <motion.div
-        className="relative z-10 flex max-w-[34rem] flex-col items-start gap-[1.35rem] max-[900px]:max-w-xl max-[620px]:gap-4"
+
+        className="relative z-10 flex max-w-[34rem] flex-col items-start gap-[1.35rem] max-[900px]:max-w-xl max-[620px]:gap-4 top-4"
         style={reduceMotion ? undefined : { y: copyY }}
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ duration: 0.65 }}
       >
         <p className="m-0 text-xs font-extrabold uppercase text-wine">
-          Pastel knitwear studio
+          My personal knitwear studio
         </p>
         <h1 className="m-0 whitespace-nowrap font-display text-[7rem] leading-[0.96] max-[900px]:text-8xl max-[620px]:text-[3.25rem]">
           Oda Knits
