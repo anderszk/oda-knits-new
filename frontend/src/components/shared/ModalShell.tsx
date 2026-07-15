@@ -13,6 +13,7 @@ interface ModalShellProps {
   closingBySwipe: boolean;
   startDrag: (event: ReactPointerEvent) => void;
   onClose: () => void;
+  shareButton?: ReactNode;
   children: ReactNode;
 }
 
@@ -27,6 +28,7 @@ export default function ModalShell({
   closingBySwipe,
   startDrag,
   onClose,
+  shareButton,
   children,
 }: ModalShellProps) {
   return (
@@ -57,6 +59,7 @@ export default function ModalShell({
         <div className="absolute inset-x-0 top-0 z-20 hidden h-7 touch-none max-[620px]:block" onPointerDown={startDrag}>
           <span className="absolute top-2 left-1/2 h-1 w-12 -translate-x-1/2 rounded-full bg-ink/25" aria-hidden="true" />
         </div>
+        {shareButton}
         <ModalCloseButton ref={closeButtonRef} onClick={onClose} label={closeLabel} />
         {children}
       </motion.div>

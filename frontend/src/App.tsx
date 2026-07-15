@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useState } from "react";
 import { AnimatePresence } from "framer-motion";
 import About from "./components/about/About";
 import AdminDashboard from "./components/admin/AdminDashboard";
@@ -15,23 +15,13 @@ import Store from "./components/store/Store";
 import WorkGallery from "./components/work/WorkGallery";
 import { CartProvider, useCart } from "./context/CartContext";
 import { SiteDataProvider, useSiteData } from "./context/SiteDataContext";
+import { isModalHistoryEntry, parseModalRoute, storePath, useRouter, workPath, type NavigateOptions } from "./lib/router";
 import { isDesktopViewport } from "./lib/viewport";
 import type { Product } from "./models/product";
 import type { Project } from "./models/project";
 
 export default function App() {
-  const [pathname, setPathname] = useState(window.location.pathname);
-
-  useEffect(() => {
-    const onPopState = () => setPathname(window.location.pathname);
-    window.addEventListener("popstate", onPopState);
-    return () => window.removeEventListener("popstate", onPopState);
-  }, []);
-
-  const navigate = useCallback((path: string) => {
-    window.history.pushState({}, "", path);
-    setPathname(path);
-  }, []);
+  const { pathname, navigate } = useRouter();
 
   if (pathname.startsWith("/admin")) return <AdminDashboard />;
 
@@ -41,22 +31,37 @@ export default function App() {
         {pathname.startsWith("/checkout") ? (
           <CheckoutPage onNavigateHome={() => navigate("/")} />
         ) : (
-          <PublicSite navigate={navigate} />
+          <PublicSite pathname={pathname} navigate={navigate} />
         )}
       </SiteDataProvider>
     </CartProvider>
   );
 }
 
-function PublicSite({ navigate }: { navigate: (path: string) => void }) {
+function PublicSite({
+  pathname,
+  navigate,
+}: {
+  pathname: string;
+  navigate: (path: string, options?: NavigateOptions) => void;
+}) {
   const { work, products, about, contactInfo } = useSiteData();
-  const [selected, setSelected] = useState<Project | null>(null);
-  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [checkoutOpen, setCheckoutOpen] = useState(false);
   const { closeDrawer } = useCart();
 
-  const closeProject = useCallback(() => setSelected(null), []);
-  const closeProduct = useCallback(() => setSelectedProduct(null), []);
+  const route = parseModalRoute(pathname);
+  const selected = route?.kind === "work" ? (work.find((project) => project.id === route.id) ?? null) : null;
+  const selectedProduct = route?.kind === "store" ? (products.find((product) => product.id === route.id) ?? null) : null;
+
+  const openProject = useCallback((project: Project) => navigate(workPath(project.id), { modal: true }), [navigate]);
+  const openProduct = useCallback((product: Product) => navigate(storePath(product.id), { modal: true }), [navigate]);
+  const closeModal = useCallback(() => {
+    if (isModalHistoryEntry()) {
+      window.history.back();
+    } else {
+      navigate("/");
+    }
+  }, [navigate]);
   const goToCheckout = useCallback(() => {
     if (isDesktopViewport()) {
       navigate("/checkout");
@@ -65,10 +70,14 @@ function PublicSite({ navigate }: { navigate: (path: string) => void }) {
     }
   }, [navigate]);
   const openCheckoutFromProduct = useCallback(() => {
-    setSelectedProduct(null);
     closeDrawer();
-    goToCheckout();
-  }, [closeDrawer, goToCheckout]);
+    if (isDesktopViewport()) {
+      navigate("/checkout");
+    } else {
+      closeModal();
+      setCheckoutOpen(true);
+    }
+  }, [closeDrawer, closeModal, navigate]);
   const closeCheckout = useCallback(() => setCheckoutOpen(false), []);
 
   return (
@@ -76,9 +85,9 @@ function PublicSite({ navigate }: { navigate: (path: string) => void }) {
       <Nav />
       <main>
         <Hero />
-        <WorkGallery projects={work} onSelect={setSelected} />
+        <WorkGallery projects={work} onSelect={openProject} />
         <InstagramCarousel />
-        <Store products={products} onSelect={setSelectedProduct} />
+        <Store products={products} onSelect={openProduct} />
         <About about={about} />
         <Contact info={contactInfo} />
       </main>
@@ -103,10 +112,10 @@ function PublicSite({ navigate }: { navigate: (path: string) => void }) {
         </svg>
       </a>
       <AnimatePresence>
-        {selected && <ProjectModal project={selected} onClose={closeProject} />}
+        {selected && <ProjectModal project={selected} onClose={closeModal} />}
       </AnimatePresence>
       <AnimatePresence>
-        {selectedProduct && <ProductModal product={selectedProduct} onClose={closeProduct} onBuyNow={openCheckoutFromProduct} />}
+        {selectedProduct && <ProductModal product={selectedProduct} onClose={closeModal} onBuyNow={openCheckoutFromProduct} />}
       </AnimatePresence>
       <CartDrawer onCheckout={goToCheckout} />
       <AnimatePresence>
