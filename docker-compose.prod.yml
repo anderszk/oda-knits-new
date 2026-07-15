@@ -46,9 +46,13 @@ services:
     volumes:
       - oda-knit-data:/data
 
-  # One-shot: builds the static frontend bundle into the frontend-dist volume,
-  # then exits. Caddy serves the built files directly (see Caddyfile) instead
-  # of proxying to a running `vite preview` server.
+  # One-shot: builds the static frontend bundle, copies it into the
+  # frontend-dist volume, then exits. Caddy serves the built files directly
+  # (see Caddyfile) instead of proxying to a running `vite preview` server.
+  # The volume is mounted at /srv-out (not /app/dist) and copied explicitly:
+  # Docker only auto-populates a named volume from image content the first
+  # time it's created, so mounting straight over /app/dist would silently
+  # keep serving the very first deploy's build on every run after that.
   frontend-build:
     build:
       context: .
@@ -57,9 +61,9 @@ services:
       args:
         VITE_API_URL: ""
         VITE_STRIPE_PUBLISHABLE_KEY: ${VITE_STRIPE_PUBLISHABLE_KEY:-}
-    command: ["true"]
+    command: ["sh", "-c", "rm -rf /srv-out/* && cp -a /app/dist/. /srv-out/"]
     volumes:
-      - frontend-dist:/app/dist
+      - frontend-dist:/srv-out
 
 volumes:
   oda-knit-data:

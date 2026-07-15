@@ -59,7 +59,7 @@ def instagram_image(url: str):
             return Response(
                 content=image_response.read(),
                 media_type=image_response.headers.get_content_type() or "image/jpeg",
-                headers={"Cache-Control": "public, max-age=600"},
+                headers={"Cache-Control": "public, max-age=604800"},
             )
     except OSError:
         raise HTTPException(status_code=502, detail="Could not load Instagram image")

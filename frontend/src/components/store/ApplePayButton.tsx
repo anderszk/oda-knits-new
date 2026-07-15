@@ -16,6 +16,8 @@ export default function ApplePayButton({ items, subtotal, onPaid }: ApplePayButt
   const [error, setError] = useState("");
 
   useEffect(() => {
+    if (typeof window.ApplePaySession === "undefined") return undefined;
+
     const stripePromise = getStripe();
     if (!stripePromise || subtotal <= 0 || !mountRef.current) return undefined;
     let cancelled = false;
