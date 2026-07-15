@@ -53,3 +53,7 @@ CREATE TABLE IF NOT EXISTS products (
     image TEXT NOT NULL DEFAULT '',
     images TEXT NOT NULL DEFAULT '[]'
 );
+
+CREATE INDEX IF NOT EXISTS idx_projects_created_at ON projects(created_at);
+CREATE INDEX IF NOT EXISTS idx_projects_category ON projects(category);
+CREATE INDEX IF NOT EXISTS idx_products_category ON products(category);
