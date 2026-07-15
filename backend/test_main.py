@@ -11,7 +11,7 @@ database_path = Path(temp_dir.name) / "contact.db"
 os.environ["DATABASE_PATH"] = str(database_path)
 os.environ["ADMIN_PASSWORD"] = "fangirl2012"
 
-from fastapi import HTTPException  # noqa: E402
+from fastapi import HTTPException, Response  # noqa: E402
 
 from backend.main import (  # noqa: E402
     AboutPayload,
@@ -21,6 +21,7 @@ from backend.main import (  # noqa: E402
     admin_login,
     admin_tokens,
     contact,
+    get_bootstrap,
     get_contact_info,
     get_about,
     get_instagram,
@@ -64,6 +65,15 @@ class ContactTest(unittest.TestCase):
 
         self.assertEqual(saved["heading"], "Send a knitting note")
         self.assertEqual(saved["button"], "Send request")
+
+    def test_bootstrap_combines_content_and_is_cacheable(self):
+        response = Response()
+        data = get_bootstrap(response)
+
+        self.assertEqual(response.headers["Cache-Control"], "public, max-age=60")
+        self.assertEqual(set(data.keys()), {"work", "products", "about", "contact_info"})
+        self.assertEqual(data["about"], get_about())
+        self.assertEqual(data["contact_info"], get_contact_info())
 
     def test_instagram_without_token_is_empty(self):
         with patch("backend.main.instagram_access_token", ""):

@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { motion } from "framer-motion";
-import { assetUrl } from "../api";
-import { nearestColorName } from "../lib/colorNames";
+import { assetUrl } from "@/api";
+import { nearestColorName } from "@/lib/colorNames";
 
 const API_BASE = import.meta.env.VITE_API_URL || "";
 const blankProject = {

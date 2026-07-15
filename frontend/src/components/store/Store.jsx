@@ -1,9 +1,9 @@
 import { useEffect, useState } from "react";
 import { animate, motion, useMotionValue, useReducedMotion, useSpring, useTransform } from "framer-motion";
-import { assetUrl } from "../api";
-import { useCart } from "../context/CartContext";
-import { formatPrice } from "../lib/format";
-import ScrollReveal, { useMobileMotion, useScrollReveal } from "./ScrollReveal";
+import { assetUrl } from "@/api";
+import { useCart } from "@/context/CartContext";
+import { formatPrice } from "@/lib/format";
+import ScrollReveal, { useMobileMotion, useScrollReveal } from "@/components/shared/ScrollReveal";
 import StoreScene from "./StoreScene";
 
 function swatchStyle(colors) {

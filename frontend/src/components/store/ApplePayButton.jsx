@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
-import { getStripe } from "../hooks/useCheckout";
-import { api } from "../api";
+import { getStripe } from "./useCheckout";
+import { api } from "@/api";
 
 export default function ApplePayButton({ items, subtotal, onPaid }) {
   const mountRef = useRef(null);

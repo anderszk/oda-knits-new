@@ -1,6 +1,6 @@
 import { AnimatePresence, motion } from "framer-motion";
-import { useCart } from "../context/CartContext";
-import { formatPrice } from "../lib/format";
+import { useCart } from "@/context/CartContext";
+import { formatPrice } from "@/lib/format";
 
 export default function CartDrawer({ onCheckout }) {
   const { items, subtotal, drawerOpen, closeDrawer, updateQuantity, removeItem } = useCart();

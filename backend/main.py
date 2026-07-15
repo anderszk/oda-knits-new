@@ -620,6 +620,17 @@ def get_products():
     return load_products()
 
 
+@app.get("/api/bootstrap")
+def get_bootstrap(response: Response):
+    response.headers["Cache-Control"] = "public, max-age=60"
+    return {
+        "work": get_work(),
+        "products": load_products(),
+        "about": load_about(),
+        "contact_info": load_contact_info(),
+    }
+
+
 @app.post("/api/orders", status_code=201)
 def create_order(order: OrderPayload, request: Request = None):
     check_rate_limit("order", client_key(request), 5, 10 * 60)
