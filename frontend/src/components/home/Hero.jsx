@@ -32,7 +32,7 @@ export default function Hero() {
       </motion.div>
       <motion.div
 
-        className="relative z-10 flex max-w-[34rem] flex-col items-start gap-[1.35rem] max-[900px]:max-w-xl max-[620px]:gap-4 top-4"
+        className="relative z-10 flex max-w-[34rem] flex-col items-start gap-[1.35rem] max-[900px]:max-w-xl max-[620px]:gap-4 top-2"
         style={reduceMotion ? undefined : { y: copyY }}
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
