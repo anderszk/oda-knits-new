@@ -18,16 +18,3 @@ ARG VITE_STRIPE_PUBLISHABLE_KEY=""
 ENV VITE_API_URL=$VITE_API_URL
 ENV VITE_STRIPE_PUBLISHABLE_KEY=$VITE_STRIPE_PUBLISHABLE_KEY
 RUN npm run build
-
-FROM node:22-alpine AS prod
-
-WORKDIR /app
-
-COPY package*.json ./
-RUN npm install
-COPY vite.config.ts tsconfig.json tsconfig.node.json ./
-
-COPY --from=build /app/dist ./dist
-
-EXPOSE 4173
-CMD ["npm", "run", "preview", "--", "--host", "0.0.0.0"]

@@ -9,11 +9,14 @@ services:
       DOMAIN: ${DOMAIN:-localhost}
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - frontend-dist:/srv:ro
       - caddy-data:/data
       - caddy-config:/config
     depends_on:
-      - frontend
-      - backend
+      backend:
+        condition: service_started
+      frontend-build:
+        condition: service_completed_successfully
 
   backend:
     build:
@@ -43,23 +46,23 @@ services:
     volumes:
       - oda-knit-data:/data
 
-  frontend:
+  # One-shot: builds the static frontend bundle into the frontend-dist volume,
+  # then exits. Caddy serves the built files directly (see Caddyfile) instead
+  # of proxying to a running `vite preview` server.
+  frontend-build:
     build:
       context: .
       dockerfile: frontend/Dockerfile
-      target: prod
+      target: build
       args:
         VITE_API_URL: ""
         VITE_STRIPE_PUBLISHABLE_KEY: ${VITE_STRIPE_PUBLISHABLE_KEY:-}
-    restart: unless-stopped
-    environment:
-      ALLOWED_HOSTS: ${DOMAIN:-localhost}
-    expose:
-      - "4173"
-    depends_on:
-      - backend
+    command: ["true"]
+    volumes:
+      - frontend-dist:/app/dist
 
 volumes:
   oda-knit-data:
   caddy-data:
   caddy-config:
+  frontend-dist:
