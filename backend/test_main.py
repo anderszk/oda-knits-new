@@ -13,25 +13,15 @@ os.environ["ADMIN_PASSWORD"] = "fangirl2012"
 
 from fastapi import HTTPException, Response  # noqa: E402
 
-from backend.main import (  # noqa: E402
-    AboutPayload,
-    ContactInfoPayload,
-    ContactMessage,
-    LoginPayload,
-    admin_login,
-    admin_tokens,
-    contact,
-    get_bootstrap,
-    get_contact_info,
-    get_about,
-    get_instagram,
-    instagram_cache,
-    rate_limits,
-    require_admin,
-    send_contact_email,
-    update_contact_info,
-    update_about,
-)
+from backend.main import get_about, get_bootstrap, get_contact_info  # noqa: E402
+from backend.models.auth import LoginPayload  # noqa: E402
+from backend.models.contact import ContactMessage  # noqa: E402
+from backend.models.content import AboutPayload, ContactInfoPayload  # noqa: E402
+from backend.routes.admin import admin_login, update_about, update_contact_info  # noqa: E402
+from backend.routes.contact import contact  # noqa: E402
+from backend.routes.instagram import get_instagram, instagram_cache  # noqa: E402
+from backend.services.email import send_contact_email  # noqa: E402
+from backend.services.security import admin_tokens, rate_limits, require_admin  # noqa: E402
 
 
 class ContactTest(unittest.TestCase):
@@ -76,7 +66,7 @@ class ContactTest(unittest.TestCase):
         self.assertEqual(data["contact_info"], get_contact_info())
 
     def test_instagram_without_token_is_empty(self):
-        with patch("backend.main.instagram_access_token", ""):
+        with patch("backend.routes.instagram.instagram_access_token", ""):
             instagram_cache.update({"expires_at": 0, "posts": []})
             self.assertEqual(get_instagram(), [])
 
@@ -92,8 +82,8 @@ class ContactTest(unittest.TestCase):
                 return b'{"data":[{"id":"1","media_type":"IMAGE","media_url":"https://scontent.cdninstagram.com/post.jpg","permalink":"https://instagram.com/p/1","caption":"Test caption"}]}'
 
         with (
-            patch("backend.main.instagram_access_token", "token"),
-            patch("backend.main.urllib.request.urlopen", return_value=FakeResponse()),
+            patch("backend.routes.instagram.instagram_access_token", "token"),
+            patch("backend.routes.instagram.urllib.request.urlopen", return_value=FakeResponse()),
         ):
             instagram_cache.update({"expires_at": 0, "posts": []})
             posts = get_instagram()
@@ -107,7 +97,7 @@ class ContactTest(unittest.TestCase):
             email="maker@example.com",
             message="I would like a custom cardigan.",
         )
-        with patch("backend.main.send_contact_email") as email_sender:
+        with patch("backend.routes.contact.send_contact_email") as email_sender:
             result = contact(message)
 
         with sqlite3.connect(database_path) as database:
@@ -130,7 +120,7 @@ class ContactTest(unittest.TestCase):
             message="I would like a custom cardigan.",
         )
 
-        with patch("backend.main.send_contact_email"):
+        with patch("backend.routes.contact.send_contact_email"):
             for _ in range(3):
                 contact(message)
             with self.assertRaises(HTTPException) as caught:
@@ -174,7 +164,7 @@ class ContactTest(unittest.TestCase):
 
         with (
             patch.dict(os.environ, {"SMTP_HOST": "smtp.example.com", "SMTP_FROM": "site@example.com"}),
-            patch("backend.main.smtplib.SMTP", FakeSMTP),
+            patch("backend.services.email.smtplib.SMTP", FakeSMTP),
         ):
             send_contact_email(ContactMessage(
                 name="Ola",
