@@ -7,7 +7,7 @@ export const CONFETTI = ["#e0607a", "#a9ddce", "#f6dc74", "#c6b6ec", "#f2a7c6", 
 interface CheckoutSuccessProps {
   order: OrderResponse | null;
   onFinish: () => void;
-  realPayment: string | null;
+  realPayment: string;
   children: ReactNode;
 }
 
@@ -39,9 +39,7 @@ export default function CheckoutSuccess({ order, onFinish, realPayment, children
       {children}
       <p className="m-0 text-sm font-bold text-[#6f6674]">Confirmation <span className="text-ink">{order.id}</span></p>
       <p className="mx-auto mt-3 max-w-xs text-sm leading-relaxed text-[#6f6674]">
-        {realPayment
-          ? `Your payment was processed with ${realPayment}. A note has been sent to Oda Knits.`
-          : "This was a demo checkout, so nothing was actually charged — but a note has been sent to Oda Knits."}
+        Your payment was processed with {realPayment}. A note has been sent to Oda Knits.
       </p>
       <button className="mt-7 inline-flex min-h-12 cursor-pointer items-center justify-center rounded-full border border-ink bg-ink px-6 py-3 font-extrabold text-cream transition hover:-translate-y-0.5 hover:bg-rose hover:text-ink" type="button" onClick={onFinish}>
         Continue shopping

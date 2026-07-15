@@ -26,7 +26,6 @@ export default function CheckoutPage({ onNavigateHome }: CheckoutPageProps) {
   const {
     items, subtotal, step, setStep,
     shipping, updateShipping, shippingValid,
-    paymentMethod, setPaymentMethod,
     submitting, error, order, placeOrder,
     payWithKlarna, payWithVipps, providers, realPayment,
   } = useCheckout();
@@ -54,7 +53,6 @@ export default function CheckoutPage({ onNavigateHome }: CheckoutPageProps) {
         <span className="font-display text-xl">
           Oda Knits<span className="text-star">*</span>
         </span>
-        <span className="text-xs font-extrabold uppercase text-wine">Mock checkout</span>
       </header>
 
       {!empty && step !== "success" && (
@@ -155,8 +153,6 @@ export default function CheckoutPage({ onNavigateHome }: CheckoutPageProps) {
                     providers={providers}
                     submitting={submitting}
                     error={error}
-                    paymentMethod={paymentMethod}
-                    setPaymentMethod={setPaymentMethod}
                     payWithKlarna={payWithKlarna}
                     payWithVipps={payWithVipps}
                     placeOrder={placeOrder}
@@ -253,7 +249,7 @@ function OrderSummaryList({ items }: { items: CartLine[] }) {
 interface SuccessPanelProps {
   order: OrderResponse | null;
   onFinish: () => void;
-  realPayment: string | null;
+  realPayment: string;
 }
 
 function SuccessPanel({ order, onFinish, realPayment }: SuccessPanelProps) {
