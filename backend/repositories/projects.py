@@ -4,7 +4,7 @@ from datetime import UTC, datetime
 from fastapi import HTTPException
 
 from database.connection import get_connection
-from database.repositories.base import unique_id
+from backend.repositories.base import unique_id
 
 COLUMNS = (
     "id", "title", "category", "description", "image", "images", "yarn", "fiber",

@@ -16,7 +16,7 @@ from backend.config import (
     VIPPS_SUBSCRIPTION_KEY,
 )
 from backend.models.orders import OrderItem
-from database.repositories import product_repository
+from backend.repositories import product_repository
 
 vipps_token_cache = {"expires_at": 0.0, "token": ""}
 

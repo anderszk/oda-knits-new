@@ -6,7 +6,7 @@ from fastapi import APIRouter, HTTPException, Request
 from backend.models.contact import ContactMessage
 from backend.services.email import send_contact_email
 from backend.services.security import check_rate_limit, client_key
-from database.repositories import contact_message_repository, content_repository
+from backend.repositories import contact_message_repository, content_repository
 
 router = APIRouter()
 

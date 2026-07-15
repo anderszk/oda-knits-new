@@ -8,7 +8,7 @@ from fastapi import APIRouter, HTTPException, Request
 from backend.models.orders import OrderPayload
 from backend.services.email import send_order_email
 from backend.services.security import check_rate_limit, client_key
-from database.repositories import order_repository, product_repository
+from backend.repositories import order_repository, product_repository
 
 router = APIRouter()
 
