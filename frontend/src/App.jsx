@@ -1,20 +1,20 @@
 import { useCallback, useEffect, useState } from "react";
 import { AnimatePresence } from "framer-motion";
-import About from "./components/About";
-import AdminDashboard from "./components/AdminDashboard";
-import CartDrawer from "./components/CartDrawer";
-import CheckoutModal from "./components/CheckoutModal";
-import CheckoutPage from "./components/CheckoutPage";
-import Contact from "./components/Contact";
-import Hero from "./components/Hero";
-import InstagramCarousel from "./components/InstagramCarousel";
-import Nav from "./components/Nav";
-import ProductModal from "./components/ProductModal";
-import ProjectModal from "./components/ProjectModal";
-import Store from "./components/Store";
-import WorkGallery from "./components/WorkGallery";
-import { api } from "./api";
+import About from "./components/about/About";
+import AdminDashboard from "./components/admin/AdminDashboard";
+import CartDrawer from "./components/store/CartDrawer";
+import CheckoutModal from "./components/store/CheckoutModal";
+import CheckoutPage from "./components/store/CheckoutPage";
+import Contact from "./components/contact/Contact";
+import Hero from "./components/home/Hero";
+import InstagramCarousel from "./components/home/InstagramCarousel";
+import Nav from "./components/layout/Nav";
+import ProductModal from "./components/store/ProductModal";
+import ProjectModal from "./components/work/ProjectModal";
+import Store from "./components/store/Store";
+import WorkGallery from "./components/work/WorkGallery";
 import { CartProvider, useCart } from "./context/CartContext";
+import { SiteDataProvider, useSiteData } from "./context/SiteDataContext";
 import { isDesktopViewport } from "./lib/viewport";
 
 export default function App() {
@@ -35,35 +35,23 @@ export default function App() {
 
   return (
     <CartProvider>
-      {pathname.startsWith("/checkout") ? (
-        <CheckoutPage onNavigateHome={() => navigate("/")} />
-      ) : (
-        <PublicSite navigate={navigate} />
-      )}
+      <SiteDataProvider>
+        {pathname.startsWith("/checkout") ? (
+          <CheckoutPage onNavigateHome={() => navigate("/")} />
+        ) : (
+          <PublicSite navigate={navigate} />
+        )}
+      </SiteDataProvider>
     </CartProvider>
   );
 }
 
 function PublicSite({ navigate }) {
-  const [work, setWork] = useState([]);
-  const [products, setProducts] = useState([]);
-  const [about, setAbout] = useState(null);
-  const [contactInfo, setContactInfo] = useState(null);
+  const { work, products, about, contactInfo } = useSiteData();
   const [selected, setSelected] = useState(null);
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [checkoutOpen, setCheckoutOpen] = useState(false);
   const { closeDrawer } = useCart();
-
-  useEffect(() => {
-    Promise.all([api("/api/work"), api("/api/products"), api("/api/about"), api("/api/contact-info")])
-      .then(([projects, catalog, info, contact]) => {
-        setWork(projects);
-        setProducts(catalog);
-        setAbout(info);
-        setContactInfo(contact);
-      })
-      .catch(console.error);
-  }, []);
 
   const closeProject = useCallback(() => setSelected(null), []);
   const closeProduct = useCallback(() => setSelectedProduct(null), []);

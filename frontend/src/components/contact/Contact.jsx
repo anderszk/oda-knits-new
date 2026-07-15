@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { api } from "../api";
-import ScrollReveal, { useScrollReveal } from "./ScrollReveal";
+import { api } from "@/api";
+import ScrollReveal, { useScrollReveal } from "@/components/shared/ScrollReveal";
 
 const defaultInfo = {
   eyebrow: "Contact",

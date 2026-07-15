@@ -1,7 +1,7 @@
 import { animate, motion, useMotionValue, useReducedMotion, useScroll, useTransform } from "framer-motion";
 import { useRef } from "react";
-import { assetUrl } from "../api";
-import ScrollReveal, { useMobileMotion, useScrollRevealStyle } from "./ScrollReveal";
+import { assetUrl } from "@/api";
+import ScrollReveal, { useMobileMotion, useScrollRevealStyle } from "@/components/shared/ScrollReveal";
 
 // Column/row spans mirror the `.work-mosaic--count-N` grid-area rules in styles.css
 // (12-col / up-to-8-row grid), so each tile can enter from whichever edge of the

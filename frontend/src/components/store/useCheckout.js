@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { loadStripe } from "@stripe/stripe-js";
-import { api } from "../api";
-import { useCart } from "../context/CartContext";
+import { api } from "@/api";
+import { useCart } from "@/context/CartContext";
 
 export const PAYMENT_METHODS = [
   { id: "card", label: "Card", hint: "Visa, Mastercard" },

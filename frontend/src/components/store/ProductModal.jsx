@@ -1,9 +1,9 @@
 import { useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion, useDragControls } from "framer-motion";
-import { assetUrl } from "../api";
-import { useCart } from "../context/CartContext";
-import { formatPrice } from "../lib/format";
-import { useMobileMotion } from "./ScrollReveal";
+import { assetUrl } from "@/api";
+import { useCart } from "@/context/CartContext";
+import { formatPrice } from "@/lib/format";
+import { useMobileMotion } from "@/components/shared/ScrollReveal";
 
 function swatchStyle(colors) {
   const stops = (colors?.length ? colors : [{ hex: "#f2b7c6" }, { hex: "#dff3ec" }]).map((color) => color.hex);

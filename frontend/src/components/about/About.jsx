@@ -1,6 +1,6 @@
 import AboutCharmScene from "./AboutCharmScene";
-import ScrollReveal from "./ScrollReveal";
-import portrait from "../img/me.jpg";
+import ScrollReveal from "@/components/shared/ScrollReveal";
+import portrait from "@/img/me.jpg";
 
 export default function About({ about }) {
   const details = about?.details || [];

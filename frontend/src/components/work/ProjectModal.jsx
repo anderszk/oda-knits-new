@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion, useDragControls } from "framer-motion";
-import { assetUrl } from "../api";
-import { useMobileMotion } from "./ScrollReveal";
+import { assetUrl } from "@/api";
+import { useMobileMotion } from "@/components/shared/ScrollReveal";
 
 export default function ProjectModal({ project, onClose }) {
   const closeButton = useRef(null);

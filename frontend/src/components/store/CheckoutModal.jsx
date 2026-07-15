@@ -1,8 +1,8 @@
 import { AnimatePresence, motion } from "framer-motion";
 import ApplePayButton from "./ApplePayButton";
-import { useCart } from "../context/CartContext";
-import { formatPrice } from "../lib/format";
-import { PAYMENT_METHODS, useCheckout } from "../hooks/useCheckout";
+import { useCart } from "@/context/CartContext";
+import { formatPrice } from "@/lib/format";
+import { PAYMENT_METHODS, useCheckout } from "./useCheckout";
 
 const CONFETTI = ["#e0607a", "#a9ddce", "#f6dc74", "#c6b6ec", "#f2a7c6", "#bd5bd3"];
 

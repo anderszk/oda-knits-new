@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { useCart } from "../context/CartContext";
+import { useCart } from "@/context/CartContext";
 
 function CartButton({ className = "" }) {
   const { count, toggleDrawer } = useCart();
