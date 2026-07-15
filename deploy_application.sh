@@ -16,4 +16,4 @@ rsync -az --delete \
   --exclude 'odaknits-ssh*' \
   ./ "$SERVER:$APP_DIR/"
 
-ssh "$SERVER" "cd '$APP_DIR' && docker compose -f docker-compose.prod.yml up -d --build && docker compose -f docker-compose.prod.yml ps"
+ssh "$SERVER" "cd '$APP_DIR' && docker compose -f docker-compose.prod.yml up -d --build && docker compose -f docker-compose.prod.yml restart caddy && docker compose -f docker-compose.prod.yml ps"

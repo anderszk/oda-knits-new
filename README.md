@@ -32,7 +32,7 @@ docker compose up --build
 docker compose -f docker-compose.prod.yml up -d --build
 ```
 
-This build runs Caddy on ports 80/443 for TLS termination and reverse proxying, with the React app and FastAPI running internally behind it. The app is deployed to a DigitalOcean Droplet — `deploy_application.sh` syncs the repo to the server and re-runs the production Compose stack over SSH.
+This build runs Caddy on ports 80/443 for TLS termination. The frontend is compiled once by a `frontend-build` container into a static bundle (a shared volume), which Caddy serves directly — it isn't a running server. API requests under `/api/*` are reverse-proxied to the FastAPI backend; everything else falls back to the frontend's `index.html` for client-side routing. The app is deployed to a DigitalOcean Droplet — `deploy_application.sh` syncs the repo to the server and re-runs the production Compose stack over SSH.
 
 - App: `https://yourdomain.no`
 - API: `https://yourdomain.no/api/work`
