@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { useCart } from "@/context/CartContext";
 
@@ -34,6 +34,115 @@ function CartButton({ className = "" }: { className?: string }) {
   );
 }
 
+const NAV_LINKS = [
+  { href: "#work", label: "Work" },
+  { href: "#instagram", label: "Instagram" },
+  { href: "#store", label: "Store" },
+  { href: "#about", label: "About" },
+  { href: "#contact", label: "Contact" },
+];
+
+const SECTION_IDS = NAV_LINKS.map(({ href }) => href.slice(1));
+
+// Tracks which section the user has scrolled to, so the nav can highlight it even when
+// they aren't hovering. Sections are looked up fresh on every tick (rather than cached
+// once) since some, like Instagram, mount late after an async fetch resolves.
+function useActiveSection(ids: string[]): string | null {
+  const [activeId, setActiveId] = useState<string | null>(null);
+
+  useEffect(() => {
+    let ticking = false;
+
+    const updateActiveId = () => {
+      ticking = false;
+      const line = window.innerHeight * 0.25;
+      let current: string | null = null;
+      for (const id of ids) {
+        const element = document.getElementById(id);
+        if (element && element.getBoundingClientRect().top <= line) current = id;
+      }
+      setActiveId(current);
+    };
+
+    const onScroll = () => {
+      if (ticking) return;
+      ticking = true;
+      requestAnimationFrame(updateActiveId);
+    };
+
+    updateActiveId();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    window.addEventListener("resize", onScroll);
+    return () => {
+      window.removeEventListener("scroll", onScroll);
+      window.removeEventListener("resize", onScroll);
+    };
+  }, [ids]);
+
+  return activeId;
+}
+
+function DesktopNav() {
+  const [hoveredLink, setHoveredLink] = useState<string | null>(null);
+  const [pinnedLink, setPinnedLink] = useState<string | null>(null);
+  const activeSection = useActiveSection(SECTION_IDS);
+  const activeHref = pinnedLink ?? hoveredLink ?? (activeSection ? `#${activeSection}` : null);
+
+  // Clicking a link starts a native smooth-scroll that takes a few hundred ms to land;
+  // pin the clicked link as active for that window so scroll-position tracking (and the
+  // blur the browser fires when it shifts focus to the target section) can't fight it
+  // and flash through every section in between.
+  useEffect(() => {
+    if (!pinnedLink) return;
+    let settleTimeout: ReturnType<typeof setTimeout>;
+    const onScroll = () => {
+      clearTimeout(settleTimeout);
+      settleTimeout = setTimeout(() => setPinnedLink(null), 150);
+    };
+    onScroll();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => {
+      clearTimeout(settleTimeout);
+      window.removeEventListener("scroll", onScroll);
+    };
+  }, [pinnedLink]);
+
+  return (
+    <nav
+      className="flex min-w-0 items-center gap-1 overflow-x-auto text-sm font-bold max-[620px]:hidden"
+      aria-label="Main navigation"
+      onMouseLeave={() => setHoveredLink(null)}
+    >
+      {NAV_LINKS.map(({ href, label }) => (
+        <a
+          aria-current={activeHref === href ? "true" : undefined}
+          className={`relative shrink-0 rounded-full px-4 py-2 transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink ${activeHref === href ? "text-cream" : "hover:text-cream focus-visible:text-cream"}`}
+          href={href}
+          key={href}
+          onBlur={() => setHoveredLink(null)}
+          onClick={() => setPinnedLink(href)}
+          onFocus={() => setHoveredLink(href)}
+          onMouseEnter={() => setHoveredLink(href)}
+        >
+          <AnimatePresence>
+            {activeHref === href && (
+              <motion.span
+                animate={{ opacity: 1 }}
+                className="absolute inset-0 -z-10 rounded-full bg-wine"
+                exit={{ opacity: 0 }}
+                initial={{ opacity: 0 }}
+                layoutId="nav-hover-pill"
+                transition={{ layout: { type: "spring", stiffness: 420, damping: 34 }, opacity: { duration: 0.15 } }}
+              />
+            )}
+          </AnimatePresence>
+          {label}
+        </a>
+      ))}
+    </nav>
+  );
+}
+
 export default function Nav() {
   const [open, setOpen] = useState(false);
 
@@ -49,16 +158,7 @@ export default function Nav() {
             *
           </span>
         </a>
-        <nav
-          className="flex min-w-0 gap-8 overflow-x-auto text-sm font-bold max-[620px]:hidden [&_a]:shrink-0 [&_a]:border-b-2 [&_a]:border-transparent [&_a]:py-1.5 [&_a]:hover:border-rose [&_a]:focus-visible:border-rose"
-          aria-label="Main navigation"
-        >
-          <a href="#work">Work</a>
-          <a href="#instagram">Instagram</a>
-          <a href="#store">Store</a>
-          <a href="#about">About</a>
-          <a href="#contact">Contact</a>
-        </nav>
+        <DesktopNav />
         <div className="flex shrink-0 items-center gap-2">
           <CartButton />
           <button
