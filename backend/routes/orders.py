@@ -1,16 +1,14 @@
 import json
 import secrets
 import smtplib
-import sqlite3
 from datetime import UTC, datetime
 
 from fastapi import APIRouter, HTTPException, Request
 
-from backend.config import DATABASE_PATH
 from backend.models.orders import OrderPayload
-from backend.repositories import load_products
 from backend.services.email import send_order_email
 from backend.services.security import check_rate_limit, client_key
+from database.repositories import insert_order, load_products
 
 router = APIRouter()
 
@@ -27,18 +25,14 @@ def create_order(order: OrderPayload, request: Request = None):
     subtotal = sum(item.price * item.quantity for item in order.items)
     order_id = f"OK-{datetime.now(UTC).strftime('%y%m%d')}-{secrets.token_hex(3).upper()}"
     created_at = datetime.now(UTC).isoformat()
-    with sqlite3.connect(DATABASE_PATH) as database:
-        database.execute(
-            "INSERT INTO orders (id, items, subtotal, shipping, payment_method, created_at) VALUES (?, ?, ?, ?, ?, ?)",
-            (
-                order_id,
-                json.dumps([item.model_dump() for item in order.items]),
-                subtotal,
-                json.dumps(order.shipping.model_dump(mode="json")),
-                order.payment_method,
-                created_at,
-            ),
-        )
+    insert_order(
+        order_id,
+        json.dumps([item.model_dump() for item in order.items]),
+        subtotal,
+        json.dumps(order.shipping.model_dump(mode="json")),
+        order.payment_method,
+        created_at,
+    )
     try:
         send_order_email(order, order_id, subtotal, created_at)
     except (OSError, RuntimeError, smtplib.SMTPException):

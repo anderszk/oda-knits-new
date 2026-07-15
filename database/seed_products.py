@@ -1,13 +1,13 @@
 """One-time helper to populate the products table for local development.
 
-Run manually: python backend/seed_products.py
+Run manually: python -m database.seed_products
 Safe to re-run - existing rows (matched by id) are left untouched.
 """
 
 import json
-import os
-import sqlite3
-from pathlib import Path
+
+from database.connection import get_connection
+from database.migrations import init_db
 
 SEED_PRODUCTS = [
     {
@@ -109,26 +109,10 @@ SEED_PRODUCTS = [
 ]
 
 
-def seed(database_path):
-    with sqlite3.connect(database_path) as database:
-        database.execute(
-            """
-            CREATE TABLE IF NOT EXISTS products (
-                id TEXT PRIMARY KEY,
-                title TEXT NOT NULL,
-                category TEXT NOT NULL,
-                price INTEGER NOT NULL,
-                description TEXT NOT NULL,
-                colors TEXT NOT NULL,
-                sizes TEXT NOT NULL,
-                badge TEXT NOT NULL,
-                stock INTEGER NOT NULL,
-                image TEXT NOT NULL DEFAULT '',
-                images TEXT NOT NULL DEFAULT '[]'
-            )
-            """
-        )
-        database.executemany(
+def seed():
+    init_db()
+    with get_connection() as connection:
+        connection.executemany(
             "INSERT OR IGNORE INTO products (id, title, category, price, description, colors, sizes, badge, stock, image, images) "
             "VALUES (:id, :title, :category, :price, :description, :colors, :sizes, :badge, :stock, :image, :images)",
             [
@@ -144,5 +128,5 @@ def seed(database_path):
 
 
 if __name__ == "__main__":
-    seed(Path(os.getenv("DATABASE_PATH", "backend/oda-knit.db")))
+    seed()
     print(f"Seeded {len(SEED_PRODUCTS)} products (existing rows left untouched).")

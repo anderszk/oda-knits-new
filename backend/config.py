@@ -1,9 +1,7 @@
 import os
 from pathlib import Path
 
-DATABASE_PATH = Path(os.getenv("DATABASE_PATH", "backend/oda-knit.db"))
-UPLOAD_DIR = Path(os.getenv("UPLOAD_DIR", DATABASE_PATH.parent / "uploads"))
-DATABASE_PATH.parent.mkdir(parents=True, exist_ok=True)
+UPLOAD_DIR = Path(os.getenv("UPLOAD_DIR", "backend/uploads"))
 UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
 
 ADMIN_USERNAME = os.getenv("ADMIN_USERNAME", "odaknits")

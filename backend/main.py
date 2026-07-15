@@ -5,9 +5,9 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
 from backend.config import UPLOAD_DIR
-from backend.db import init_db
-from backend.repositories import load_about, load_contact_info, load_products, load_projects
 from backend.routes import admin, contact, instagram, orders, payments
+from database.migrations import init_db
+from database.repositories import load_about, load_contact_info, load_products, load_projects
 
 # Called eagerly (not just from lifespan) because the test suite calls route and
 # repository functions directly, without ever starting the app through an ASGI

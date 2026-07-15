@@ -13,8 +13,14 @@ dependencies = [
     "uvicorn[standard]==0.34.0",
 ]
 
+[dependency-groups]
+dev = ["pytest"]
+
 [tool.setuptools.packages.find]
-include = ["backend*"]
+include = ["backend*", "database*"]
+
+[tool.setuptools.package-data]
+database = ["*.sql"]
 
 [tool.pytest.ini_options]
 testpaths = ["backend"]

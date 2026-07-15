@@ -1,28 +1,31 @@
 import secrets
 import shutil
-import sqlite3
 import time
 from datetime import UTC, datetime
 from pathlib import Path
 
 from fastapi import APIRouter, Depends, File, HTTPException, Request, UploadFile
 
-from backend.config import ADMIN_PASSWORD, ADMIN_SESSION_SECONDS, ADMIN_USERNAME, DATABASE_PATH, UPLOAD_DIR
+from backend.config import ADMIN_PASSWORD, ADMIN_SESSION_SECONDS, ADMIN_USERNAME, UPLOAD_DIR
 from backend.models.auth import LoginPayload
 from backend.models.content import AboutPayload, ContactInfoPayload
 from backend.models.products import ProductPayload
 from backend.models.projects import ProjectPayload
-from backend.repositories import (
+from backend.services.security import admin_tokens, check_rate_limit, client_key, require_admin
+from database.repositories import (
+    delete_product,
+    delete_project,
     load_about,
     load_contact_info,
     load_products,
     load_projects,
+    product_exists,
+    project_exists,
     save_about,
     save_contact_info,
     save_product,
     save_project,
 )
-from backend.services.security import admin_tokens, check_rate_limit, client_key, require_admin
 
 router = APIRouter()
 
@@ -69,24 +72,21 @@ def update_contact_info(contact_info: ContactInfoPayload, _=Depends(require_admi
 
 @router.post("/api/admin/projects", status_code=201)
 def create_project(project: ProjectPayload, _=Depends(require_admin)):
-    with sqlite3.connect(DATABASE_PATH) as database:
-        saved = save_project(database, project)
+    saved = save_project(project)
     return {"ok": True, "id": saved["id"]}
 
 
 @router.put("/api/admin/projects/{project_id}")
 def update_project(project_id: str, project: ProjectPayload, _=Depends(require_admin)):
-    with sqlite3.connect(DATABASE_PATH) as database:
-        if not database.execute("SELECT 1 FROM projects WHERE id = ?", (project_id,)).fetchone():
-            raise HTTPException(status_code=404, detail="Project not found")
-        save_project(database, project, project_id=project_id)
+    if not project_exists(project_id):
+        raise HTTPException(status_code=404, detail="Project not found")
+    save_project(project, project_id=project_id)
     return {"ok": True, "id": project_id}
 
 
 @router.delete("/api/admin/projects/{project_id}", status_code=204)
-def delete_project(project_id: str, _=Depends(require_admin)):
-    with sqlite3.connect(DATABASE_PATH) as database:
-        database.execute("DELETE FROM projects WHERE id = ?", (project_id,))
+def remove_project(project_id: str, _=Depends(require_admin)):
+    delete_project(project_id)
 
 
 @router.get("/api/admin/products")
@@ -96,24 +96,21 @@ def admin_products(_=Depends(require_admin)):
 
 @router.post("/api/admin/products", status_code=201)
 def create_product(product: ProductPayload, _=Depends(require_admin)):
-    with sqlite3.connect(DATABASE_PATH) as database:
-        saved = save_product(database, product)
+    saved = save_product(product)
     return {"ok": True, "id": saved["id"]}
 
 
 @router.put("/api/admin/products/{product_id}")
 def update_product(product_id: str, product: ProductPayload, _=Depends(require_admin)):
-    with sqlite3.connect(DATABASE_PATH) as database:
-        if not database.execute("SELECT 1 FROM products WHERE id = ?", (product_id,)).fetchone():
-            raise HTTPException(status_code=404, detail="Product not found")
-        save_product(database, product, product_id=product_id)
+    if not product_exists(product_id):
+        raise HTTPException(status_code=404, detail="Product not found")
+    save_product(product, product_id=product_id)
     return {"ok": True, "id": product_id}
 
 
 @router.delete("/api/admin/products/{product_id}", status_code=204)
-def delete_product(product_id: str, _=Depends(require_admin)):
-    with sqlite3.connect(DATABASE_PATH) as database:
-        database.execute("DELETE FROM products WHERE id = ?", (product_id,))
+def remove_product(product_id: str, _=Depends(require_admin)):
+    delete_product(product_id)
 
 
 @router.post("/api/admin/uploads", status_code=201)

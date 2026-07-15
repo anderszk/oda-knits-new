@@ -7,6 +7,7 @@ WORKDIR /app
 
 COPY pyproject.toml .
 COPY backend ./backend
+COPY database ./database
 RUN pip install --no-cache-dir .
 
 EXPOSE 8000
