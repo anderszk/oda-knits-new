@@ -4,6 +4,7 @@ import ColorSwatchList from "@/components/shared/ColorSwatchList";
 import ImageCarouselNav from "@/components/shared/ImageCarouselNav";
 import ImageThumbnailStrip from "@/components/shared/ImageThumbnailStrip";
 import ModalShell from "@/components/shared/ModalShell";
+import ShareButton from "@/components/shared/ShareButton";
 import { useDismissableModal } from "@/components/shared/useDismissableModal";
 import { isWip, type Project } from "@/models/project";
 
@@ -43,6 +44,7 @@ export default function ProjectModal({ project, onClose }: ProjectModalProps) {
       closingBySwipe={closingBySwipe}
       startDrag={startDrag}
       onClose={onClose}
+      shareButton={<ShareButton url={window.location.href} title={project.title} text={project.description} />}
     >
       <div className="relative min-h-full overflow-hidden bg-mint max-[620px]:h-[39svh] max-[620px]:min-h-[17rem]" onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
         <AnimatePresence mode="wait">

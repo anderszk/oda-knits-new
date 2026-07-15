@@ -7,6 +7,7 @@ import ColorSwatchList from "@/components/shared/ColorSwatchList";
 import ImageCarouselNav from "@/components/shared/ImageCarouselNav";
 import ImageThumbnailStrip from "@/components/shared/ImageThumbnailStrip";
 import ModalShell from "@/components/shared/ModalShell";
+import ShareButton from "@/components/shared/ShareButton";
 import { swatchStyle } from "@/components/shared/swatchStyle";
 import { useDismissableModal } from "@/components/shared/useDismissableModal";
 import { isLowStock, type Product } from "@/models/product";
@@ -61,6 +62,7 @@ export default function ProductModal({ product, onClose, onBuyNow }: ProductModa
       closingBySwipe={closingBySwipe}
       startDrag={startDrag}
       onClose={onClose}
+      shareButton={<ShareButton url={window.location.href} title={product.title} text={product.description} />}
     >
       <div
         className="relative flex min-h-full items-center justify-center overflow-hidden max-[620px]:h-[30svh] max-[620px]:min-h-[13rem]"

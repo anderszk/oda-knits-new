@@ -7,7 +7,7 @@ from fastapi.staticfiles import StaticFiles
 from backend.config import UPLOAD_DIR
 from backend.routes import admin, contact, instagram, orders, payments
 from database.migrations import init_db
-from database.repositories import content_repository, product_repository, project_repository
+from backend.repositories import content_repository, product_repository, project_repository
 
 # Called eagerly (not just from lifespan) because the test suite calls route and
 # repository functions directly, without ever starting the app through an ASGI

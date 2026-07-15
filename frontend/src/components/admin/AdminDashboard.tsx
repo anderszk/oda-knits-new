@@ -535,7 +535,7 @@ export default function AdminDashboard() {
               <button className={`${buttonClass} shrink-0 border border-ink bg-white px-3 py-1.5 text-sm font-bold hover:border-star hover:text-star`} onClick={() => updateProductField("colors", [...productForm.colors, { name: nearestColorName("#f2b7c6"), hex: "#f2b7c6" }])} type="button">Add color</button>
             </div>
             {!productForm.colors?.length && <p className="text-sm font-bold text-wine">Add at least one color.</p>}
-            <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+            <div className="grid gap-3 md:grid-cols-2">
               {productForm.colors.map((color, index) => (
                 <div className="grid grid-cols-[3rem_1fr_auto] gap-2 rounded-md border border-ink/15 bg-cream p-2 transition hover:border-star max-[380px]:grid-cols-[3rem_1fr]" key={`${color.name}-${index}`}>
                   <input className="h-10 w-full cursor-pointer border-0 bg-transparent" type="color" value={color.hex} onChange={(event) => updateProductColor(index, "hex", event.target.value)} />
@@ -631,7 +631,7 @@ export default function AdminDashboard() {
               <button className={`${buttonClass} shrink-0 border border-ink bg-white px-3 py-1.5 text-sm font-bold hover:border-star hover:text-star`} onClick={() => updateField("colors", [...form.colors, { name: nearestColorName("#f2b7c6"), hex: "#f2b7c6" }])} type="button">Add color</button>
             </div>
             {!form.colors?.length && <p className="text-sm font-bold text-wine">Add at least one color.</p>}
-            <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+            <div className="grid gap-3 md:grid-cols-2">
               {form.colors.map((color, index) => (
                 <div className="grid grid-cols-[3rem_1fr_auto] gap-2 rounded-md border border-ink/15 bg-cream p-2 transition hover:border-star max-[380px]:grid-cols-[3rem_1fr]" key={`${color.name}-${index}`}>
                   <input className="h-10 w-full cursor-pointer border-0 bg-transparent" type="color" value={color.hex} onChange={(event) => updateColor(index, "hex", event.target.value)} />

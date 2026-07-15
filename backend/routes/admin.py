@@ -12,7 +12,7 @@ from backend.models.content import AboutPayload, ContactInfoPayload
 from backend.models.products import ProductPayload
 from backend.models.projects import ProjectPayload
 from backend.services.security import admin_tokens, check_rate_limit, client_key, require_admin
-from database.repositories import content_repository, product_repository, project_repository
+from backend.repositories import content_repository, product_repository, project_repository
 
 router = APIRouter()
 

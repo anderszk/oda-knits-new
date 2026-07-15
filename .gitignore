@@ -9,3 +9,4 @@ __pycache__/
 odaknits-ssh*
 build/
 *.egg-info/
+docs/codebase-audit.md
