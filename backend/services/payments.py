@@ -16,13 +16,13 @@ from backend.config import (
     VIPPS_SUBSCRIPTION_KEY,
 )
 from backend.models.orders import OrderItem
-from database.repositories import load_products
+from database.repositories import product_repository
 
 vipps_token_cache = {"expires_at": 0.0, "token": ""}
 
 
 def revalidated_subtotal(items: list[OrderItem]) -> int:
-    catalog = {product["id"]: product for product in load_products()}
+    catalog = {product["id"]: product for product in product_repository.list()}
     for item in items:
         product = catalog.get(item.id)
         if not product or item.price != product["price"] or item.size not in product["sizes"]:

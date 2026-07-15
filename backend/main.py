@@ -7,7 +7,7 @@ from fastapi.staticfiles import StaticFiles
 from backend.config import UPLOAD_DIR
 from backend.routes import admin, contact, instagram, orders, payments
 from database.migrations import init_db
-from database.repositories import load_about, load_contact_info, load_products, load_projects
+from database.repositories import content_repository, product_repository, project_repository
 
 # Called eagerly (not just from lifespan) because the test suite calls route and
 # repository functions directly, without ever starting the app through an ASGI
@@ -57,30 +57,30 @@ app.include_router(contact.router)
 
 @app.get("/api/work")
 def get_work():
-    return load_projects()
+    return project_repository.list()
 
 
 @app.get("/api/about")
 def get_about():
-    return load_about()
+    return content_repository.get_about()
 
 
 @app.get("/api/contact-info")
 def get_contact_info():
-    return load_contact_info()
+    return content_repository.get_contact_info()
 
 
 @app.get("/api/products")
 def get_products():
-    return load_products()
+    return product_repository.list()
 
 
 @app.get("/api/bootstrap")
 def get_bootstrap(response: Response):
     response.headers["Cache-Control"] = "public, max-age=60"
     return {
-        "work": load_projects(),
-        "products": load_products(),
-        "about": load_about(),
-        "contact_info": load_contact_info(),
+        "work": project_repository.list(),
+        "products": product_repository.list(),
+        "about": content_repository.get_about(),
+        "contact_info": content_repository.get_contact_info(),
     }

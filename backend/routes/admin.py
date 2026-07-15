@@ -12,20 +12,7 @@ from backend.models.content import AboutPayload, ContactInfoPayload
 from backend.models.products import ProductPayload
 from backend.models.projects import ProjectPayload
 from backend.services.security import admin_tokens, check_rate_limit, client_key, require_admin
-from database.repositories import (
-    delete_product,
-    delete_project,
-    load_about,
-    load_contact_info,
-    load_products,
-    load_projects,
-    product_exists,
-    project_exists,
-    save_about,
-    save_contact_info,
-    save_product,
-    save_project,
-)
+from database.repositories import content_repository, product_repository, project_repository
 
 router = APIRouter()
 
@@ -47,70 +34,70 @@ def admin_login(payload: LoginPayload, request: Request = None):
 
 @router.get("/api/admin/projects")
 def admin_projects(_=Depends(require_admin)):
-    return load_projects()
+    return project_repository.list()
 
 
 @router.get("/api/admin/about")
 def admin_about(_=Depends(require_admin)):
-    return load_about()
+    return content_repository.get_about()
 
 
 @router.put("/api/admin/about")
 def update_about(about: AboutPayload, _=Depends(require_admin)):
-    return {"ok": True, "about": save_about(about)}
+    return {"ok": True, "about": content_repository.save_about(about)}
 
 
 @router.get("/api/admin/contact-info")
 def admin_contact_info(_=Depends(require_admin)):
-    return load_contact_info()
+    return content_repository.get_contact_info()
 
 
 @router.put("/api/admin/contact-info")
 def update_contact_info(contact_info: ContactInfoPayload, _=Depends(require_admin)):
-    return {"ok": True, "contact": save_contact_info(contact_info)}
+    return {"ok": True, "contact": content_repository.save_contact_info(contact_info)}
 
 
 @router.post("/api/admin/projects", status_code=201)
 def create_project(project: ProjectPayload, _=Depends(require_admin)):
-    saved = save_project(project)
+    saved = project_repository.save(project)
     return {"ok": True, "id": saved["id"]}
 
 
 @router.put("/api/admin/projects/{project_id}")
 def update_project(project_id: str, project: ProjectPayload, _=Depends(require_admin)):
-    if not project_exists(project_id):
+    if not project_repository.exists(project_id):
         raise HTTPException(status_code=404, detail="Project not found")
-    save_project(project, project_id=project_id)
+    project_repository.save(project, project_id=project_id)
     return {"ok": True, "id": project_id}
 
 
 @router.delete("/api/admin/projects/{project_id}", status_code=204)
 def remove_project(project_id: str, _=Depends(require_admin)):
-    delete_project(project_id)
+    project_repository.delete(project_id)
 
 
 @router.get("/api/admin/products")
 def admin_products(_=Depends(require_admin)):
-    return load_products()
+    return product_repository.list()
 
 
 @router.post("/api/admin/products", status_code=201)
 def create_product(product: ProductPayload, _=Depends(require_admin)):
-    saved = save_product(product)
+    saved = product_repository.save(product)
     return {"ok": True, "id": saved["id"]}
 
 
 @router.put("/api/admin/products/{product_id}")
 def update_product(product_id: str, product: ProductPayload, _=Depends(require_admin)):
-    if not product_exists(product_id):
+    if not product_repository.exists(product_id):
         raise HTTPException(status_code=404, detail="Product not found")
-    save_product(product, product_id=product_id)
+    product_repository.save(product, product_id=product_id)
     return {"ok": True, "id": product_id}
 
 
 @router.delete("/api/admin/products/{product_id}", status_code=204)
 def remove_product(product_id: str, _=Depends(require_admin)):
-    delete_product(product_id)
+    product_repository.delete(product_id)
 
 
 @router.post("/api/admin/uploads", status_code=201)

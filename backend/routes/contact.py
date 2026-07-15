@@ -6,7 +6,7 @@ from fastapi import APIRouter, HTTPException, Request
 from backend.models.contact import ContactMessage
 from backend.services.email import send_contact_email
 from backend.services.security import check_rate_limit, client_key
-from database.repositories import insert_contact_message, load_contact_info
+from database.repositories import contact_message_repository, content_repository
 
 router = APIRouter()
 
@@ -15,7 +15,7 @@ router = APIRouter()
 def contact(message: ContactMessage, request: Request = None):
     check_rate_limit("contact", client_key(request), 3, 5 * 60)
     created_at = datetime.now(UTC).isoformat()
-    message_id = insert_contact_message(message.name, str(message.email), message.message, created_at)
+    message_id = contact_message_repository.create(message.name, str(message.email), message.message, created_at)
     try:
         send_contact_email(message, created_at)
     except (OSError, RuntimeError, smtplib.SMTPException) as error:
@@ -23,5 +23,5 @@ def contact(message: ContactMessage, request: Request = None):
     return {
         "ok": True,
         "id": message_id,
-        "message": load_contact_info()["success"].format(name=message.name),
+        "message": content_repository.get_contact_info()["success"].format(name=message.name),
     }
