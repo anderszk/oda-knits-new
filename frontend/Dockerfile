@@ -6,7 +6,7 @@ COPY package*.json ./
 RUN npm install
 
 COPY index.html ./
-COPY vite.config.js ./
+COPY vite.config.ts tsconfig.json tsconfig.node.json ./
 COPY frontend ./frontend
 
 EXPOSE 5173
@@ -25,7 +25,7 @@ WORKDIR /app
 
 COPY package*.json ./
 RUN npm install
-COPY vite.config.js ./
+COPY vite.config.ts tsconfig.json tsconfig.node.json ./
 
 COPY --from=build /app/dist ./dist
 
