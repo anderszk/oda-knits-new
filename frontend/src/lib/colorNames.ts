@@ -1,7 +1,7 @@
 import nearestColor from "nearest-color";
 
 // The 147 CSS4 extended color keywords, used to auto-suggest a friendly name for a picked hex value.
-const NAMED_COLORS = {
+const NAMED_COLORS: Record<string, string> = {
   AliceBlue: "#f0f8ff", AntiqueWhite: "#faebd7", Aqua: "#00ffff", Aquamarine: "#7fffd4", Azure: "#f0ffff",
   Beige: "#f5f5dc", Bisque: "#ffe4c4", Black: "#000000", BlanchedAlmond: "#ffebcd", Blue: "#0000ff",
   BlueViolet: "#8a2be2", Brown: "#a52a2a", BurlyWood: "#deb887", CadetBlue: "#5f9ea0", Chartreuse: "#7fff00",
@@ -34,7 +34,7 @@ const NAMED_COLORS = {
 
 const matchNearestColor = nearestColor.from(NAMED_COLORS);
 
-export function nearestColorName(hex) {
+export function nearestColorName(hex: string): string {
   if (!/^#[0-9a-fA-F]{6}$/.test(hex)) return "";
   const match = matchNearestColor(hex);
   return match.name.replace(/([a-z])([A-Z])/g, "$1 $2");
