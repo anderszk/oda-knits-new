@@ -7,7 +7,7 @@ import type { CartLine } from "@/models/cartLine";
 interface ApplePayButtonProps {
   items: CartLine[];
   subtotal: number;
-  onPaid: () => void;
+  onPaid: (paymentReference: string) => void;
 }
 
 export default function ApplePayButton({ items, subtotal, onPaid }: ApplePayButtonProps) {
@@ -41,18 +41,18 @@ export default function ApplePayButton({ items, subtotal, onPaid }: ApplePayButt
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ items: items.map((line) => ({ id: line.id, title: line.title, price: line.price, size: line.size, quantity: line.quantity })) }),
           });
-          const { error: confirmError } = await stripe.confirmCardPayment(
+          const { paymentIntent, error: confirmError } = await stripe.confirmCardPayment(
             clientSecret,
             { payment_method: event.paymentMethod.id },
             { handleActions: false },
           );
-          if (confirmError) {
+          if (confirmError || !paymentIntent) {
             event.complete("fail");
             setError("Apple Pay payment failed. Please try again.");
             return;
           }
           event.complete("success");
-          onPaid();
+          onPaid(paymentIntent.id);
         } catch {
           event.complete("fail");
           setError("Apple Pay payment failed. Please try again.");

@@ -1,15 +1,31 @@
 import re
 import secrets
+import urllib.parse
 from datetime import UTC, datetime
 
 from fastapi import APIRouter, HTTPException, Request
 
-from backend.config import STRIPE_SECRET_KEY, VIPPS_CONFIGURED
+from backend.config import ALLOWED_ORIGINS, STRIPE_SECRET_KEY, VIPPS_CONFIGURED
 from backend.models.orders import PaymentItemsPayload, VippsPaymentPayload
 from backend.services.payments import call_stripe, call_vipps, revalidated_subtotal
 from backend.services.security import check_rate_limit, client_key
 
 router = APIRouter()
+
+
+def _is_allowed_return_url(url: str) -> bool:
+    parsed = urllib.parse.urlparse(url)
+    if parsed.scheme not in ("http", "https") or not parsed.netloc:
+        return False
+    origin = f"{parsed.scheme}://{parsed.netloc}"
+    return origin in ALLOWED_ORIGINS
+
+
+def _require_key(result: dict, key: str, error_detail: str):
+    try:
+        return result[key]
+    except KeyError:
+        raise HTTPException(status_code=502, detail=error_detail)
 
 
 @router.get("/api/payments/config")
@@ -33,7 +49,7 @@ def create_card_intent(payload: PaymentItemsPayload, request: Request = None):
         "currency": "nok",
         "payment_method_types[]": "card",
     })
-    return {"client_secret": result["client_secret"], "subtotal": subtotal}
+    return {"client_secret": _require_key(result, "client_secret", "Could not reach payment provider"), "subtotal": subtotal}
 
 
 @router.post("/api/payments/apple-pay-intent", status_code=201)
@@ -48,7 +64,7 @@ def create_apple_pay_intent(payload: PaymentItemsPayload, request: Request = Non
         "currency": "nok",
         "payment_method_types[]": "card",
     })
-    return {"client_secret": result["client_secret"], "subtotal": subtotal}
+    return {"client_secret": _require_key(result, "client_secret", "Could not reach payment provider"), "subtotal": subtotal}
 
 
 @router.post("/api/payments/klarna-intent", status_code=201)
@@ -62,7 +78,7 @@ def create_klarna_intent(payload: PaymentItemsPayload, request: Request = None):
         "currency": "nok",
         "payment_method_types[]": "klarna",
     })
-    return {"client_secret": result["client_secret"], "subtotal": subtotal}
+    return {"client_secret": _require_key(result, "client_secret", "Could not reach payment provider"), "subtotal": subtotal}
 
 
 @router.get("/api/payments/klarna-status")
@@ -80,7 +96,7 @@ def klarna_status(payment_intent: str, request: Request = None):
 def create_vipps_payment(payload: VippsPaymentPayload, request: Request = None):
     if not VIPPS_CONFIGURED:
         raise HTTPException(status_code=503, detail="Vipps is not configured")
-    if not payload.return_url.startswith(("http://", "https://")):
+    if not _is_allowed_return_url(payload.return_url):
         raise HTTPException(status_code=400, detail="Invalid return URL")
     check_rate_limit("vipps-payment", client_key(request), 10, 10 * 60)
     subtotal = revalidated_subtotal(payload.items)
@@ -95,7 +111,7 @@ def create_vipps_payment(payload: VippsPaymentPayload, request: Request = None):
         "paymentDescription": "Oda Knits order",
     }, idempotent=True)
 
-    return {"redirect_url": result["redirectUrl"], "reference": reference, "subtotal": subtotal}
+    return {"redirect_url": _require_key(result, "redirectUrl", "Could not reach Vipps"), "reference": reference, "subtotal": subtotal}
 
 
 @router.get("/api/payments/vipps-status")

@@ -20,6 +20,7 @@ export interface CreateOrderRequest {
   items: OrderItemPayload[];
   shipping: ShippingPayload;
   payment_method: string;
+  payment_reference: string;
   website: string;
 }
 

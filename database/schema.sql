@@ -37,6 +37,7 @@ CREATE TABLE IF NOT EXISTS orders (
     subtotal INTEGER NOT NULL,
     shipping TEXT NOT NULL,
     payment_method TEXT NOT NULL,
+    payment_reference TEXT NOT NULL DEFAULT '',
     created_at TEXT NOT NULL
 );
 

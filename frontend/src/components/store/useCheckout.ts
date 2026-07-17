@@ -78,7 +78,7 @@ export function useCheckout() {
 
   const orderItems = (): OrderItemPayload[] => items.map((line) => ({ id: line.id, title: line.title, price: line.price, size: line.size, quantity: line.quantity }));
 
-  const placeOrder = async (paymentMethod: string) => {
+  const placeOrder = async (paymentMethod: string, paymentReference: string) => {
     setSubmitting(true);
     setError("");
     try {
@@ -86,6 +86,7 @@ export function useCheckout() {
         items: orderItems(),
         shipping: toShippingPayload(shipping),
         payment_method: paymentMethod,
+        payment_reference: paymentReference,
         website: "",
       };
       const result = await apiClient.request<OrderResponse>("/api/orders", {
@@ -187,28 +188,28 @@ export function useCheckout() {
     const pendingRaw = sessionStorage.getItem(PENDING_REDIRECT_KEY);
     const pending: PendingRedirect | null = pendingRaw ? JSON.parse(pendingRaw) : null;
 
-    const confirm = async (): Promise<{ items: OrderItemPayload[]; shipping: ReturnType<typeof toShippingPayload>; paymentMethod: string }> => {
+    const confirm = async (): Promise<{ items: OrderItemPayload[]; shipping: ReturnType<typeof toShippingPayload>; paymentMethod: string; paymentReference: string }> => {
       if (stripePaymentIntent) {
         if (params.get("redirect_status") !== "succeeded" || !pending || pending.provider !== "klarna") {
           throw new Error("not confirmed");
         }
         const status = await apiClient.request<{ status: string }>(`/api/payments/klarna-status?payment_intent=${encodeURIComponent(stripePaymentIntent)}`);
         if (status.status !== "succeeded") throw new Error("not confirmed");
-        return { items: pending.items, shipping: pending.shipping, paymentMethod: "Klarna" };
+        return { items: pending.items, shipping: pending.shipping, paymentMethod: "Klarna", paymentReference: stripePaymentIntent };
       }
       if (!pending || pending.provider !== "vipps" || !pending.reference) throw new Error("not confirmed");
       const status = await apiClient.request<{ state: string }>(`/api/payments/vipps-status?reference=${encodeURIComponent(pending.reference)}`);
       if (status.state !== "AUTHORIZED") throw new Error("not confirmed");
-      return { items: pending.items, shipping: pending.shipping, paymentMethod: "Vipps" };
+      return { items: pending.items, shipping: pending.shipping, paymentMethod: "Vipps", paymentReference: pending.reference };
     };
 
     setSubmitting(true);
     confirm()
-      .then(async ({ items: pendingItems, shipping: pendingShipping, paymentMethod: label }) => {
+      .then(async ({ items: pendingItems, shipping: pendingShipping, paymentMethod: label, paymentReference }) => {
         const result = await apiClient.request<OrderResponse>("/api/orders", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ items: pendingItems, shipping: pendingShipping, payment_method: label, website: "" }),
+          body: JSON.stringify({ items: pendingItems, shipping: pendingShipping, payment_method: label, payment_reference: paymentReference, website: "" }),
         });
         setOrder(result);
         setRealPayment(label);

@@ -8,7 +8,7 @@ import type { CartLine } from "@/models/cartLine";
 interface CardPaymentFieldProps {
   items: CartLine[];
   subtotal: number;
-  onPaid: () => void;
+  onPaid: (paymentReference: string) => void;
 }
 
 const ELEMENT_STYLE = {
@@ -74,13 +74,13 @@ export default function CardPaymentField({ items, subtotal, onPaid }: CardPaymen
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ items: items.map((line) => ({ id: line.id, title: line.title, price: line.price, size: line.size, quantity: line.quantity })) }),
       });
-      const { error: confirmError } = await stripe.confirmCardPayment(clientSecret, { payment_method: { card: cardNumber } });
-      if (confirmError) {
-        setError(confirmError.message || "Card payment failed. Please check your details and try again.");
+      const { paymentIntent, error: confirmError } = await stripe.confirmCardPayment(clientSecret, { payment_method: { card: cardNumber } });
+      if (confirmError || !paymentIntent) {
+        setError(confirmError?.message || "Card payment failed. Please check your details and try again.");
         setSubmitting(false);
         return;
       }
-      onPaid();
+      onPaid(paymentIntent.id);
     } catch {
       setError("Card payment failed. Please try again.");
       setSubmitting(false);

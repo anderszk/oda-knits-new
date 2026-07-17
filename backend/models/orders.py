@@ -29,6 +29,7 @@ class OrderPayload(BaseModel):
     items: list[OrderItem] = Field(min_length=1, max_length=50)
     shipping: ShippingInfo
     payment_method: str = Field(min_length=2, max_length=40)
+    payment_reference: str = Field(min_length=1, max_length=200)
     website: str = Field(default="", max_length=200)
 
     @model_validator(mode="after")

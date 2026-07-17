@@ -19,3 +19,10 @@ def init_db():
             connection.execute("ALTER TABLE products ADD COLUMN images TEXT NOT NULL DEFAULT '[]'")
             for row_id, image in connection.execute("SELECT id, image FROM products WHERE image != ''").fetchall():
                 connection.execute("UPDATE products SET images = ? WHERE id = ?", (json.dumps([image]), row_id))
+        order_columns = {row[1] for row in connection.execute("PRAGMA table_info(orders)")}
+        if "payment_reference" not in order_columns:
+            connection.execute("ALTER TABLE orders ADD COLUMN payment_reference TEXT NOT NULL DEFAULT ''")
+        connection.execute(
+            "CREATE UNIQUE INDEX IF NOT EXISTS idx_orders_payment_reference "
+            "ON orders(payment_reference) WHERE payment_reference != ''"
+        )
