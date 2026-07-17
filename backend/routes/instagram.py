@@ -52,7 +52,8 @@ def get_instagram():
 @router.get("/api/instagram/image")
 def instagram_image(url: str):
     parsed = urllib.parse.urlparse(url)
-    if parsed.scheme != "https" or not parsed.hostname or not parsed.hostname.endswith("cdninstagram.com"):
+    hostname = parsed.hostname or ""
+    if parsed.scheme != "https" or not (hostname == "cdninstagram.com" or hostname.endswith(".cdninstagram.com")):
         raise HTTPException(status_code=400, detail="Invalid image URL")
     try:
         with urllib.request.urlopen(url, timeout=8) as image_response:

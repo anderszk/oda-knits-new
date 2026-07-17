@@ -1,3 +1,4 @@
+import logging
 import sqlite3
 from contextlib import asynccontextmanager
 
@@ -10,6 +11,8 @@ from backend.config import ALLOWED_ORIGINS, UPLOAD_DIR
 from backend.routes import admin, contact, instagram, orders, payments
 from database.migrations import init_db
 from backend.repositories import content_repository, product_repository, project_repository
+
+logger = logging.getLogger(__name__)
 
 init_db()
 
@@ -38,6 +41,15 @@ async def handle_sqlite_operational_error(request: Request, exc: sqlite3.Operati
     return JSONResponse(
         status_code=503,
         content={"detail": "The database is temporarily unavailable. Please try again."},
+    )
+
+
+@app.exception_handler(Exception)
+async def handle_unexpected_error(request: Request, exc: Exception):
+    logger.exception("Unhandled error on %s %s", request.method, request.url.path)
+    return JSONResponse(
+        status_code=500,
+        content={"detail": "Something went wrong. Please try again."},
     )
 
 
