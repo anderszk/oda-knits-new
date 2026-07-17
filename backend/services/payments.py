@@ -1,4 +1,5 @@
 import json
+import logging
 import secrets
 import time
 import urllib.error
@@ -6,6 +7,8 @@ import urllib.parse
 import urllib.request
 
 from fastapi import HTTPException
+
+logger = logging.getLogger(__name__)
 
 from backend.config import (
     STRIPE_SECRET_KEY,
@@ -63,7 +66,11 @@ def vipps_access_token() -> str:
     try:
         with urllib.request.urlopen(request_obj, timeout=8) as response:
             payload = json.load(response)
-    except (OSError, urllib.error.URLError):
+    except urllib.error.HTTPError as error:
+        logger.error("Vipps access token request failed: %s %s", error.code, error.read().decode(errors="replace"))
+        raise HTTPException(status_code=502, detail="Could not reach Vipps")
+    except (OSError, urllib.error.URLError) as error:
+        logger.error("Vipps access token request failed: %r", error)
         raise HTTPException(status_code=502, detail="Could not reach Vipps")
     vipps_token_cache.update({
         "token": payload["access_token"],
@@ -90,5 +97,9 @@ def call_vipps(path: str, body: dict | None = None, method: str = "POST", idempo
     try:
         with urllib.request.urlopen(request_obj, timeout=8) as response:
             return json.load(response)
-    except (OSError, urllib.error.URLError):
+    except urllib.error.HTTPError as error:
+        logger.error("Vipps request to %s failed: %s %s", path, error.code, error.read().decode(errors="replace"))
+        raise HTTPException(status_code=502, detail="Could not reach Vipps")
+    except (OSError, urllib.error.URLError) as error:
+        logger.error("Vipps request to %s failed: %r", path, error)
         raise HTTPException(status_code=502, detail="Could not reach Vipps")

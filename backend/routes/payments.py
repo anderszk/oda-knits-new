@@ -15,10 +15,25 @@ router = APIRouter()
 @router.get("/api/payments/config")
 def payments_config():
     return {
+        "card": bool(STRIPE_SECRET_KEY),
         "applePay": bool(STRIPE_SECRET_KEY),
         "klarna": bool(STRIPE_SECRET_KEY),
         "vipps": VIPPS_CONFIGURED,
     }
+
+
+@router.post("/api/payments/card-intent", status_code=201)
+def create_card_intent(payload: PaymentItemsPayload, request: Request = None):
+    if not STRIPE_SECRET_KEY:
+        raise HTTPException(status_code=503, detail="Card payments are not configured")
+    check_rate_limit("card-intent", client_key(request), 10, 10 * 60)
+    subtotal = revalidated_subtotal(payload.items)
+    result = call_stripe("payment_intents", {
+        "amount": subtotal * 100,
+        "currency": "nok",
+        "payment_method_types[]": "card",
+    })
+    return {"client_secret": result["client_secret"], "subtotal": subtotal}
 
 
 @router.post("/api/payments/apple-pay-intent", status_code=201)

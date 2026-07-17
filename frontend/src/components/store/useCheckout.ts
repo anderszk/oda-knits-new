@@ -11,19 +11,10 @@ import {
   type ShippingFormState,
 } from "@/models/order";
 
-export interface PaymentMethodOption {
-  id: string;
-  label: string;
-  hint: string;
-}
-
-export const PAYMENT_METHODS: PaymentMethodOption[] = [
-  { id: "card", label: "Card", hint: "Visa, Mastercard" },
-];
-
 type CheckoutStep = "review" | "shipping" | "payment" | "success";
 
 interface PaymentProviders {
+  card: boolean;
   applePay: boolean;
   klarna: boolean;
   vipps: boolean;
@@ -44,7 +35,7 @@ function loadPaymentsConfig(): Promise<PaymentProviders> {
   if (!configPromise) {
     configPromise = apiClient
       .request<PaymentProviders>("/api/payments/config")
-      .catch(() => ({ applePay: false, klarna: false, vipps: false }));
+      .catch(() => ({ card: false, applePay: false, klarna: false, vipps: false }));
   }
   return configPromise;
 }
@@ -71,12 +62,11 @@ export function useCheckout() {
   const { items, subtotal, clear } = useCart();
   const [step, setStep] = useState<CheckoutStep>("review");
   const [shipping, setShipping] = useState<ShippingFormState>({ name: "", email: "", address: "", city: "", postalCode: "", phone: "" });
-  const [paymentMethod, setPaymentMethod] = useState("card");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
   const [order, setOrder] = useState<OrderResponse | null>(null);
-  const [realPayment, setRealPayment] = useState<string | null>(null);
-  const [providers, setProviders] = useState<PaymentProviders>({ applePay: false, klarna: false, vipps: false });
+  const [realPayment, setRealPayment] = useState("");
+  const [providers, setProviders] = useState<PaymentProviders>({ card: false, applePay: false, klarna: false, vipps: false });
 
   useEffect(() => {
     loadPaymentsConfig().then(setProviders);
@@ -88,14 +78,14 @@ export function useCheckout() {
 
   const orderItems = (): OrderItemPayload[] => items.map((line) => ({ id: line.id, title: line.title, price: line.price, size: line.size, quantity: line.quantity }));
 
-  const placeOrder = async (overridePaymentMethod?: string) => {
+  const placeOrder = async (paymentMethod: string) => {
     setSubmitting(true);
     setError("");
     try {
       const payload: CreateOrderRequest = {
         items: orderItems(),
         shipping: toShippingPayload(shipping),
-        payment_method: overridePaymentMethod || PAYMENT_METHODS.find((method) => method.id === paymentMethod)?.label || paymentMethod,
+        payment_method: paymentMethod,
         website: "",
       };
       const result = await apiClient.request<OrderResponse>("/api/orders", {
@@ -104,7 +94,7 @@ export function useCheckout() {
         body: JSON.stringify(payload),
       });
       setOrder(result);
-      setRealPayment(overridePaymentMethod || null);
+      setRealPayment(paymentMethod);
       setStep("success");
       clear();
     } catch {
@@ -241,7 +231,6 @@ export function useCheckout() {
   return {
     items, subtotal, step, setStep,
     shipping, updateShipping, shippingValid,
-    paymentMethod, setPaymentMethod,
     submitting, error, order, placeOrder,
     payWithKlarna, payWithVipps, providers, realPayment,
   };

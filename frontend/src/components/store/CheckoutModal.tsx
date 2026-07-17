@@ -15,7 +15,6 @@ export default function CheckoutModal({ onClose }: CheckoutModalProps) {
   const {
     items, subtotal, step, setStep,
     shipping, updateShipping, shippingValid,
-    paymentMethod, setPaymentMethod,
     submitting, error, order, placeOrder,
     payWithKlarna, payWithVipps, providers, realPayment,
   } = useCheckout();
@@ -51,12 +50,9 @@ export default function CheckoutModal({ onClose }: CheckoutModalProps) {
 
         <div className="overflow-y-auto px-7 py-8 max-[620px]:px-5 max-[620px]:py-7">
           {step !== "success" && (
-            <>
-              <p className="mb-1 text-xs font-extrabold uppercase text-wine">Mock checkout</p>
-              <h2 className="mb-6 font-display text-4xl leading-none max-[620px]:text-3xl">
-                {step === "review" ? "Your order" : step === "shipping" ? "Shipping details" : "Payment"}
-              </h2>
-            </>
+            <h2 className="mb-6 font-display text-4xl leading-none max-[620px]:text-3xl">
+              {step === "review" ? "Your order" : step === "shipping" ? "Shipping details" : "Payment"}
+            </h2>
           )}
 
           <AnimatePresence mode="wait">
@@ -110,8 +106,6 @@ export default function CheckoutModal({ onClose }: CheckoutModalProps) {
                   providers={providers}
                   submitting={submitting}
                   error={error}
-                  paymentMethod={paymentMethod}
-                  setPaymentMethod={setPaymentMethod}
                   payWithKlarna={payWithKlarna}
                   payWithVipps={payWithVipps}
                   placeOrder={placeOrder}

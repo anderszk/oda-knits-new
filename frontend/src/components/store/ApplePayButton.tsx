@@ -64,7 +64,7 @@ export default function ApplePayButton({ items, subtotal, onPaid }: ApplePayButt
         const elements = stripe.elements();
         button = elements.create("paymentRequestButton", {
           paymentRequest,
-          style: { paymentRequestButton: { type: "check-out", theme: "dark", height: "48px" } },
+          style: { paymentRequestButton: { type: "default", theme: "dark", height: "40px" } },
         });
         button.mount(mountRef.current!);
         setAvailable(true);
@@ -78,7 +78,7 @@ export default function ApplePayButton({ items, subtotal, onPaid }: ApplePayButt
   }, [items, subtotal, onPaid]);
 
   return (
-    <div className={available ? "mb-3" : "hidden"}>
+    <div className={available ? "" : "hidden"}>
       <div ref={mountRef} />
       {error && <p className="mt-3 rounded-md bg-[#ffe3e3] px-3 py-2 text-sm font-bold text-wine">{error}</p>}
     </div>
