@@ -97,6 +97,7 @@ function PublicSite({
           &copy; {new Date().getFullYear()} Kristensen Solutions
         </p>
           <nav className="flex flex-wrap gap-x-5 gap-y-2" aria-label="Footer navigation">
+            <a className="hover:text-wine" href="#home">Home</a>
             <a className="hover:text-wine" href="#work">Work</a>
             <a className="hover:text-wine" href="#store">Store</a>
             <a className="hover:text-wine" href="#about">About</a>

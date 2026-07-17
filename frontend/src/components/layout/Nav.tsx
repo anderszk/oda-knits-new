@@ -34,19 +34,19 @@ function CartButton({ className = "" }: { className?: string }) {
   );
 }
 
+// `color` is only used by the mobile menu's per-item accent; the desktop nav below
+// reads just `href`/`label` and ignores it.
 const NAV_LINKS = [
-  { href: "#work", label: "Work" },
-  { href: "#instagram", label: "Instagram" },
-  { href: "#store", label: "Store" },
-  { href: "#about", label: "About" },
-  { href: "#contact", label: "Contact" },
+  { href: "#home", label: "Home", color: "text-[#4a72b0]" },
+  { href: "#work", label: "Work", color: "text-rose" },
+  { href: "#instagram", label: "Instagram", color: "text-wine" },
+  { href: "#store", label: "Store", color: "text-[#e3a85e]" },
+  { href: "#about", label: "About", color: "text-star" },
+  { href: "#contact", label: "Contact", color: "text-[#4f9b84]" },
 ];
 
 const SECTION_IDS = NAV_LINKS.map(({ href }) => href.slice(1));
 
-// Tracks which section the user has scrolled to, so the nav can highlight it even when
-// they aren't hovering. Sections are looked up fresh on every tick (rather than cached
-// once) since some, like Instagram, mount late after an async fetch resolves.
 function useActiveSection(ids: string[]): string | null {
   const [activeId, setActiveId] = useState<string | null>(null);
 
@@ -88,10 +88,6 @@ function DesktopNav() {
   const activeSection = useActiveSection(SECTION_IDS);
   const activeHref = pinnedLink ?? hoveredLink ?? (activeSection ? `#${activeSection}` : null);
 
-  // Clicking a link starts a native smooth-scroll that takes a few hundred ms to land;
-  // pin the clicked link as active for that window so scroll-position tracking (and the
-  // blur the browser fires when it shifts focus to the target section) can't fight it
-  // and flash through every section in between.
   useEffect(() => {
     if (!pinnedLink) return;
     let settleTimeout: ReturnType<typeof setTimeout>;
@@ -223,66 +219,21 @@ export default function Nav() {
                 </button>
               </div>
               <div className="grid gap-2">
-                <a
-                  className="group flex items-end justify-between border-b border-ink/15 py-4"
-                  href="#work"
-                  onClick={() => setOpen(false)}
-                >
-                  <span className="font-display text-[2.45rem] leading-none transition group-hover:text-wine">
-                    Work
-                  </span>
-                  <span className="mb-1 text-xs uppercase tracking-[0.24em] text-rose">
-                    01
-                  </span>
-                </a>
-                <a
-                  className="group flex items-end justify-between border-b border-ink/15 py-4"
-                  href="#store"
-                  onClick={() => setOpen(false)}
-                >
-                  <span className="font-display text-[2.45rem] leading-none transition group-hover:text-wine">
-                    Store
-                  </span>
-                  <span className="mb-1 text-xs uppercase tracking-[0.24em] text-[#e3a85e]">
-                    02
-                  </span>
-                </a>
-                <a
-                  className="group flex items-end justify-between border-b border-ink/15 py-4"
-                  href="#about"
-                  onClick={() => setOpen(false)}
-                >
-                  <span className="font-display text-[2.45rem] leading-none transition group-hover:text-wine">
-                    About
-                  </span>
-                  <span className="mb-1 text-xs uppercase tracking-[0.24em] text-star">
-                    03
-                  </span>
-                </a>
-                <a
-                  className="group flex items-end justify-between border-b border-ink/15 py-4"
-                  href="#instagram"
-                  onClick={() => setOpen(false)}
-                >
-                  <span className="font-display text-[2.45rem] leading-none transition group-hover:text-wine">
-                    Instagram
-                  </span>
-                  <span className="mb-1 text-xs uppercase tracking-[0.24em] text-wine">
-                    04
-                  </span>
-                </a>
-                <a
-                  className="group flex items-end justify-between border-b border-ink/15 py-4"
-                  href="#contact"
-                  onClick={() => setOpen(false)}
-                >
-                  <span className="font-display text-[2.45rem] leading-none transition group-hover:text-wine">
-                    Contact
-                  </span>
-                  <span className="mb-1 text-xs uppercase tracking-[0.24em] text-[#4f9b84]">
-                    05
-                  </span>
-                </a>
+                {NAV_LINKS.map(({ href, label, color }, index) => (
+                  <a
+                    key={href}
+                    className="group flex items-end justify-between border-b border-ink/15 py-4"
+                    href={href}
+                    onClick={() => setOpen(false)}
+                  >
+                    <span className="font-display text-[2.45rem] leading-none transition group-hover:text-wine">
+                      {label}
+                    </span>
+                    <span className={`mb-1 text-xs uppercase tracking-[0.24em] ${color}`}>
+                      {String(index + 1).padStart(2, "0")}
+                    </span>
+                  </a>
+                ))}
               </div>
               <p className="mt-8 max-w-xs text-sm font-bold leading-relaxed text-[#6d6476]">
                 Colorful knits, soft fibers, and works in progress from
