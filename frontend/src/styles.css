@@ -8,6 +8,13 @@
   --color-rose: #d7658a;
   --color-star: #bd5bd3;
   --color-wine: #9a4264;
+
+  /* Section backgrounds: one warm hue, stepped lightness only, in scroll order */
+  --color-paper: #faf6ef;
+  --color-oat: #f5eee2;
+  --color-wheat: #f2ece0;
+  --color-flax: #f7f1e6;
+  --color-clay: #efe6d9;
   --font-display: Georgia, serif;
 }
 

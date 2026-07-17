@@ -30,7 +30,7 @@ export default function InstagramCarousel() {
 
   return (
     <section
-      className="scroll-mt-6 border-y border-ink/10 bg-[#f3efe7] px-[clamp(1rem,4vw,4rem)] py-18 max-[620px]:scroll-mt-4 max-[620px]:px-4 max-[620px]:py-12"
+      className="scroll-mt-6 border-y border-ink/10 bg-clay px-[clamp(1rem,4vw,4rem)] py-18 max-[620px]:scroll-mt-4 max-[620px]:px-4 max-[620px]:py-12"
       id="instagram"
     >
       <ScrollReveal className="mb-8 flex flex-wrap items-end justify-between gap-4">

@@ -13,7 +13,7 @@ export default function About({ about }: AboutProps) {
 
   return (
     <section
-      className="relative overflow-hidden border-y border-ink/10 bg-mint px-[clamp(1rem,4vw,4rem)] py-24 max-[620px]:px-4 max-[620px]:py-16"
+      className="relative overflow-hidden border-y border-ink/10 bg-oat px-[clamp(1rem,4vw,4rem)] py-24 max-[620px]:px-4 max-[620px]:py-16"
       id="about"
     >
       <div className="relative mx-auto grid max-w-[88rem] grid-cols-[minmax(12rem,.68fr)_minmax(21rem,1.22fr)_minmax(15rem,.7fr)] items-center gap-12 max-[1050px]:grid-cols-[minmax(13rem,.8fr)_minmax(20rem,1.2fr)] max-[900px]:grid-cols-1">

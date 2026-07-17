@@ -96,7 +96,7 @@ export default function WorkGallery({ projects, onSelect }: WorkGalleryProps) {
   });
 
   return (
-    <section className="bg-cream px-[clamp(1rem,4vw,4rem)] py-24 max-[620px]:px-4 max-[620px]:py-16" id="work">
+    <section className="bg-paper px-[clamp(1rem,4vw,4rem)] py-24 max-[620px]:px-4 max-[620px]:py-16" id="work">
       <ScrollReveal className="mb-10 flex items-end justify-between gap-12 max-[620px]:flex-col max-[620px]:items-start max-[620px]:gap-4">
         <div>
           <p className="mb-3 text-xs font-extrabold uppercase text-wine">The knit archive</p>

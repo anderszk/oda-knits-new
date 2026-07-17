@@ -38,7 +38,7 @@ export default function Store({ products, onSelect }: StoreProps) {
   const columns = useColumnCount();
   const singleColumn = columns === 1;
   return (
-    <section className="bg-[#fbf2ff] px-[clamp(1rem,4vw,4rem)] py-24 max-[620px]:px-4 max-[620px]:py-16" id="store">
+    <section className="bg-flax px-[clamp(1rem,4vw,4rem)] py-24 max-[620px]:px-4 max-[620px]:py-16" id="store">
       <div className="grid grid-cols-[1.1fr_1fr] items-start gap-8 max-[900px]:grid-cols-1 max-[900px]:mb-10">
         <ScrollReveal>
           <p className="mb-3 text-xs font-extrabold uppercase text-wine">The little shop</p>
