@@ -12,6 +12,8 @@ def get_connection():
     """Yield a sqlite3 connection, committing on success and rolling back on any error."""
     connection = sqlite3.connect(DATABASE_PATH)
     try:
+        connection.execute("PRAGMA busy_timeout = 5000")
+        connection.execute("PRAGMA journal_mode = WAL")
         yield connection
         connection.commit()
     except sqlite3.Error:

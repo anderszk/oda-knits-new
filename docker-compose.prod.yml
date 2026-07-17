@@ -29,6 +29,7 @@ services:
       DATABASE_PATH: /data/oda-knit.db
       ADMIN_USERNAME: odaknits
       ADMIN_PASSWORD: ${ADMIN_PASSWORD:-}
+      ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-}
       CONTACT_EMAIL_TO: ${CONTACT_EMAIL_TO:-oda.hennissen@gmail.com}
       SMTP_HOST: ${SMTP_HOST:-}
       SMTP_PORT: ${SMTP_PORT:-587}
@@ -46,13 +47,6 @@ services:
     volumes:
       - oda-knit-data:/data
 
-  # One-shot: builds the static frontend bundle, copies it into the
-  # frontend-dist volume, then exits. Caddy serves the built files directly
-  # (see Caddyfile) instead of proxying to a running `vite preview` server.
-  # The volume is mounted at /srv-out (not /app/dist) and copied explicitly:
-  # Docker only auto-populates a named volume from image content the first
-  # time it's created, so mounting straight over /app/dist would silently
-  # keep serving the very first deploy's build on every run after that.
   frontend-build:
     build:
       context: .
