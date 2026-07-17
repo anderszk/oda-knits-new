@@ -3,36 +3,27 @@ import type { Product } from "@/models/product";
 import type { Project } from "@/models/project";
 
 const API_BASE = import.meta.env.VITE_API_URL || "";
-const TOKEN_KEY = "oda-admin-token";
+const LOGGED_IN_KEY = "oda-admin-logged-in";
 
 export class AdminApiClient {
-  private token: string;
-
-  constructor() {
-    this.token = localStorage.getItem(TOKEN_KEY) || "";
+  isLoggedIn(): boolean {
+    return localStorage.getItem(LOGGED_IN_KEY) === "1";
   }
 
-  getToken(): string {
-    return this.token;
+  private setLoggedIn(loggedIn: boolean): void {
+    if (loggedIn) localStorage.setItem(LOGGED_IN_KEY, "1");
+    else localStorage.removeItem(LOGGED_IN_KEY);
   }
 
-  private setToken(token: string): void {
-    this.token = token;
-    localStorage.setItem(TOKEN_KEY, token);
-  }
-
-  logout(): void {
-    this.token = "";
-    localStorage.removeItem(TOKEN_KEY);
+  async logout(): Promise<void> {
+    this.setLoggedIn(false);
+    await fetch(`${API_BASE}/api/admin/logout`, { method: "POST", credentials: "include" }).catch(() => {});
   }
 
   async request<T>(path: string, options: RequestInit = {}): Promise<T> {
-    const response = await fetch(`${API_BASE}${path}`, {
-      ...options,
-      headers: { Authorization: `Bearer ${this.token}`, ...(options.headers || {}) },
-    });
+    const response = await fetch(`${API_BASE}${path}`, { ...options, credentials: "include" });
     if (response.status === 401) {
-      this.logout();
+      this.setLoggedIn(false);
       throw new Error("Please log in again.");
     }
     if (!response.ok) {
@@ -42,9 +33,10 @@ export class AdminApiClient {
     return response.status === 204 ? (null as T) : response.json();
   }
 
-  async login(username: string, password: string): Promise<{ token: string }> {
+  async login(username: string, password: string): Promise<void> {
     const response = await fetch(`${API_BASE}/api/admin/login`, {
       method: "POST",
+      credentials: "include",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ username, password }),
     });
@@ -52,9 +44,7 @@ export class AdminApiClient {
       const body = await response.json().catch(() => ({}));
       throw new Error(body.detail || "Wrong username or password.");
     }
-    const data: { token: string } = await response.json();
-    this.setToken(data.token);
-    return data;
+    this.setLoggedIn(true);
   }
 
   listProjects(): Promise<Project[]> {

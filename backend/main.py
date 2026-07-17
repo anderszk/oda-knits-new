@@ -1,17 +1,16 @@
+import sqlite3
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI, Response
+from fastapi import FastAPI, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 
-from backend.config import UPLOAD_DIR
+from backend.config import ALLOWED_ORIGINS, UPLOAD_DIR
 from backend.routes import admin, contact, instagram, orders, payments
 from database.migrations import init_db
 from backend.repositories import content_repository, product_repository, project_repository
 
-# Called eagerly (not just from lifespan) because the test suite calls route and
-# repository functions directly, without ever starting the app through an ASGI
-# server or TestClient that would trigger the lifespan below.
 init_db()
 
 
@@ -27,16 +26,19 @@ app.mount("/api/uploads", StaticFiles(directory=UPLOAD_DIR), name="uploads")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:5173",
-        "http://127.0.0.1:5173",
-        "http://localhost:8000",
-        "http://127.0.0.1:8000",
-    ],
+    allow_origins=ALLOWED_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+@app.exception_handler(sqlite3.OperationalError)
+async def handle_sqlite_operational_error(request: Request, exc: sqlite3.OperationalError):
+    return JSONResponse(
+        status_code=503,
+        content={"detail": "The database is temporarily unavailable. Please try again."},
+    )
 
 
 @app.middleware("http")

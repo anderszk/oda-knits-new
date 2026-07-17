@@ -3,11 +3,13 @@ services:
     build:
       context: .
       dockerfile: backend/Dockerfile
-    command: uvicorn backend.main:app --host 0.0.0.0 --port 8000 --reload
+    command: uvicorn backend.main:app --host 0.0.0.0 --port 8000 --reload --proxy-headers --forwarded-allow-ips="*"
     environment:
       DATABASE_PATH: /data/oda-knit.db
       ADMIN_USERNAME: odaknits
       ADMIN_PASSWORD: ${ADMIN_PASSWORD:-}
+      ADMIN_COOKIE_SECURE: "false"
+      ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-}
       CONTACT_EMAIL_TO: ${CONTACT_EMAIL_TO:-oda.hennissen@gmail.com}
       SMTP_HOST: ${SMTP_HOST:-}
       SMTP_PORT: ${SMTP_PORT:-587}

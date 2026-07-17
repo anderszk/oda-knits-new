@@ -10,3 +10,4 @@ odaknits-ssh*
 build/
 *.egg-info/
 docs/codebase-audit.md
+docs/fix-progress.md

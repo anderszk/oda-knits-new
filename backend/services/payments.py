@@ -46,7 +46,7 @@ def call_stripe(path: str, body: dict | None = None, method: str = "POST"):
     try:
         with urllib.request.urlopen(request_obj, timeout=8) as response:
             return json.load(response)
-    except (OSError, urllib.error.URLError):
+    except (OSError, urllib.error.URLError, json.JSONDecodeError):
         raise HTTPException(status_code=502, detail="Could not reach payment provider")
 
 
@@ -66,16 +66,16 @@ def vipps_access_token() -> str:
     try:
         with urllib.request.urlopen(request_obj, timeout=8) as response:
             payload = json.load(response)
+        vipps_token_cache.update({
+            "token": payload["access_token"],
+            "expires_at": time.monotonic() + max(60, int(payload.get("expires_in", 3600)) - 120),
+        })
     except urllib.error.HTTPError as error:
         logger.error("Vipps access token request failed: %s %s", error.code, error.read().decode(errors="replace"))
         raise HTTPException(status_code=502, detail="Could not reach Vipps")
-    except (OSError, urllib.error.URLError) as error:
+    except (OSError, urllib.error.URLError, json.JSONDecodeError, KeyError) as error:
         logger.error("Vipps access token request failed: %r", error)
         raise HTTPException(status_code=502, detail="Could not reach Vipps")
-    vipps_token_cache.update({
-        "token": payload["access_token"],
-        "expires_at": time.monotonic() + max(60, int(payload.get("expires_in", 3600)) - 120),
-    })
     return vipps_token_cache["token"]
 
 
@@ -100,6 +100,6 @@ def call_vipps(path: str, body: dict | None = None, method: str = "POST", idempo
     except urllib.error.HTTPError as error:
         logger.error("Vipps request to %s failed: %s %s", path, error.code, error.read().decode(errors="replace"))
         raise HTTPException(status_code=502, detail="Could not reach Vipps")
-    except (OSError, urllib.error.URLError) as error:
+    except (OSError, urllib.error.URLError, json.JSONDecodeError) as error:
         logger.error("Vipps request to %s failed: %r", path, error)
         raise HTTPException(status_code=502, detail="Could not reach Vipps")

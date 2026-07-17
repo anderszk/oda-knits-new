@@ -17,9 +17,25 @@ from backend.main import get_about, get_bootstrap, get_contact_info  # noqa: E40
 from backend.models.auth import LoginPayload  # noqa: E402
 from backend.models.contact import ContactMessage  # noqa: E402
 from backend.models.content import AboutPayload, ContactInfoPayload  # noqa: E402
-from backend.routes.admin import admin_login, update_about, update_contact_info  # noqa: E402
+from backend.models.orders import OrderPayload, PaymentItemsPayload  # noqa: E402
+from backend.models.products import ProductPayload  # noqa: E402
+from backend.models.projects import ProjectPayload  # noqa: E402
+from backend.routes.admin import (  # noqa: E402
+    admin_login,
+    create_product,
+    create_project,
+    remove_product,
+    remove_project,
+    update_about,
+    update_contact_info,
+    update_product,
+    update_project,
+)
 from backend.routes.contact import contact  # noqa: E402
 from backend.routes.instagram import get_instagram, instagram_cache  # noqa: E402
+from backend.routes.orders import create_order  # noqa: E402
+from backend.routes.payments import create_card_intent  # noqa: E402
+from backend.repositories import product_repository, project_repository  # noqa: E402
 from backend.services.email import send_contact_email  # noqa: E402
 from backend.services.security import admin_tokens, rate_limits, require_admin  # noqa: E402
 
@@ -129,16 +145,211 @@ class ContactTest(unittest.TestCase):
         self.assertEqual(caught.exception.status_code, 429)
 
     def test_admin_tokens_expire(self):
-        result = admin_login(LoginPayload(username="odaknits", password="fangirl2012"))
-        token = result["token"]
-        self.assertTrue(require_admin(f"Bearer {token}"))
+        response = Response()
+        admin_login(LoginPayload(username="odaknits", password="fangirl2012"), response)
+        token = response.headers["set-cookie"].split("admin_token=")[1].split(";")[0]
+        self.assertTrue(require_admin(token))
 
         admin_tokens[token] = time.monotonic() - 1
 
         with self.assertRaises(HTTPException) as caught:
-            require_admin(f"Bearer {token}")
+            require_admin(token)
 
         self.assertEqual(caught.exception.status_code, 401)
+
+    def _make_product(self, **overrides):
+        payload = {
+            "title": "Test Sweater",
+            "category": "Sweaters",
+            "price": 500,
+            "description": "A cozy hand-knit sweater used for backend test coverage.",
+            "colors": [{"name": "Cream", "hex": "#FFFFFF"}],
+            "sizes": ["S", "M"],
+            "stock": 5,
+        }
+        payload.update(overrides)
+        return product_repository.save(ProductPayload(**payload))
+
+    def _make_order_payload(self, product, payment_method="Card", payment_reference="pi_test000001", price=None):
+        return OrderPayload(
+            items=[{
+                "id": product["id"],
+                "title": product["title"],
+                "price": price if price is not None else product["price"],
+                "size": product["sizes"][0],
+                "quantity": 1,
+            }],
+            shipping={
+                "name": "Test Buyer",
+                "email": "buyer@example.com",
+                "address": "Test street 1",
+                "city": "Oslo",
+                "postal_code": "0150",
+                "phone": "12345678",
+            },
+            payment_method=payment_method,
+            payment_reference=payment_reference,
+        )
+
+    def test_create_order_succeeds_with_verified_payment(self):
+        product = self._make_product()
+        order = self._make_order_payload(product, payment_reference="pi_success0001")
+
+        with (
+            patch("backend.routes.orders.call_stripe", return_value={
+                "status": "succeeded", "amount": product["price"] * 100, "currency": "nok",
+            }),
+            patch("backend.routes.orders.send_order_email"),
+        ):
+            result = create_order(order)
+
+        self.assertTrue(result["ok"])
+        self.assertEqual(result["subtotal"], product["price"])
+
+    def test_create_order_rejects_price_mismatch(self):
+        product = self._make_product()
+        order = self._make_order_payload(product, payment_reference="pi_mismatch001", price=product["price"] + 1)
+
+        with self.assertRaises(HTTPException) as caught:
+            create_order(order)
+
+        self.assertEqual(caught.exception.status_code, 400)
+
+    def test_create_order_rejects_invalid_payment_reference(self):
+        product = self._make_product()
+        order = self._make_order_payload(product, payment_reference="not-a-valid-reference")
+
+        with self.assertRaises(HTTPException) as caught:
+            create_order(order)
+
+        self.assertEqual(caught.exception.status_code, 400)
+
+    def test_create_order_rejects_unverified_payment(self):
+        product = self._make_product()
+        order = self._make_order_payload(product, payment_reference="pi_wrongstatus1")
+
+        with patch("backend.routes.orders.call_stripe", return_value={
+            "status": "requires_action", "amount": product["price"] * 100, "currency": "nok",
+        }):
+            with self.assertRaises(HTTPException) as caught:
+                create_order(order)
+
+        self.assertEqual(caught.exception.status_code, 402)
+
+    def test_create_order_rejects_reused_payment_reference(self):
+        product = self._make_product()
+        reference = "pi_reused0000001"
+
+        with (
+            patch("backend.routes.orders.call_stripe", return_value={
+                "status": "succeeded", "amount": product["price"] * 100, "currency": "nok",
+            }),
+            patch("backend.routes.orders.send_order_email"),
+        ):
+            create_order(self._make_order_payload(product, payment_reference=reference))
+            with self.assertRaises(HTTPException) as caught:
+                create_order(self._make_order_payload(product, payment_reference=reference))
+
+        self.assertEqual(caught.exception.status_code, 409)
+
+    def test_card_intent_returns_client_secret(self):
+        product = self._make_product()
+        payload = PaymentItemsPayload(items=[{
+            "id": product["id"],
+            "title": product["title"],
+            "price": product["price"],
+            "size": product["sizes"][0],
+            "quantity": 1,
+        }])
+
+        class FakeResponse:
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *args):
+                pass
+
+            def read(self):
+                return b'{"client_secret":"secret_abc123"}'
+
+        with (
+            patch("backend.routes.payments.STRIPE_SECRET_KEY", "sk_test_x"),
+            patch("backend.services.payments.urllib.request.urlopen", return_value=FakeResponse()),
+        ):
+            result = create_card_intent(payload)
+
+        self.assertEqual(result["client_secret"], "secret_abc123")
+        self.assertEqual(result["subtotal"], product["price"])
+
+    def test_admin_product_crud(self):
+        created = create_product(ProductPayload(
+            title="Original Sweater",
+            category="Sweaters",
+            price=450,
+            description="A warm sweater used for admin CRUD test coverage.",
+            colors=[{"name": "Cream", "hex": "#FFFFFF"}],
+            sizes=["S", "M"],
+            stock=3,
+        ))
+        product_id = created["id"]
+        self.assertTrue(created["ok"])
+
+        update_product(product_id, ProductPayload(
+            id=product_id,
+            title="Updated Sweater",
+            category="Sweaters",
+            price=550,
+            description="An updated warm sweater used for admin CRUD test coverage.",
+            colors=[{"name": "Cream", "hex": "#FFFFFF"}],
+            sizes=["S", "M", "L"],
+            stock=4,
+        ))
+        updated = next(p for p in product_repository.list() if p["id"] == product_id)
+        self.assertEqual(updated["title"], "Updated Sweater")
+        self.assertEqual(updated["price"], 550)
+
+        remove_product(product_id)
+        self.assertFalse(product_repository.exists(product_id))
+
+    def test_admin_project_crud(self):
+        created = create_project(ProjectPayload(
+            title="Original Cardigan",
+            category="Cardigans",
+            description="A cozy cardigan project used for admin CRUD test coverage.",
+            images=["https://example.com/cardigan.jpg"],
+            yarn="Merino wool",
+            fiber="Wool",
+            technique="Colorwork",
+            needles="4mm",
+            size="M",
+            time="20 hours",
+            year="2025",
+            colors=[{"name": "Rust", "hex": "#B5533C"}],
+        ))
+        project_id = created["id"]
+        self.assertTrue(created["ok"])
+
+        update_project(project_id, ProjectPayload(
+            id=project_id,
+            title="Updated Cardigan",
+            category="Cardigans",
+            description="An updated cozy cardigan project used for admin CRUD test coverage.",
+            images=["https://example.com/cardigan-2.jpg"],
+            yarn="Merino wool",
+            fiber="Wool",
+            technique="Colorwork",
+            needles="4mm",
+            size="L",
+            time="22 hours",
+            year="2025",
+            colors=[{"name": "Rust", "hex": "#B5533C"}],
+        ))
+        updated = next(p for p in project_repository.list() if p["id"] == project_id)
+        self.assertEqual(updated["title"], "Updated Cardigan")
+        self.assertEqual(updated["size"], "L")
+
+        remove_project(project_id)
+        self.assertFalse(project_repository.exists(project_id))
 
     def test_contact_email_is_sent_to_oda(self):
         sent = []
@@ -163,7 +374,8 @@ class ContactTest(unittest.TestCase):
                 sent.append(email)
 
         with (
-            patch.dict(os.environ, {"SMTP_HOST": "smtp.example.com", "SMTP_FROM": "site@example.com"}),
+            patch("backend.services.email.SMTP_HOST", "smtp.example.com"),
+            patch("backend.services.email.SMTP_FROM", "site@example.com"),
             patch("backend.services.email.smtplib.SMTP", FakeSMTP),
         ):
             send_contact_email(ContactMessage(

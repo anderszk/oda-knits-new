@@ -20,7 +20,7 @@ interface PaymentMethodFieldsProps {
   error: string;
   payWithKlarna: () => void;
   payWithVipps: () => void;
-  placeOrder: (paymentMethod: string) => void;
+  placeOrder: (paymentMethod: string, paymentReference: string) => void;
   onBack: () => void;
   summary?: ReactNode;
 }
@@ -37,7 +37,7 @@ export default function PaymentMethodFields({
       {hasExpressOptions && (
         <div className="mb-6 grid gap-2">
           {providers.applePay && (
-            <ApplePayButton items={items} subtotal={subtotal} onPaid={() => placeOrder("Apple Pay")} />
+            <ApplePayButton items={items} subtotal={subtotal} onPaid={(reference) => placeOrder("Apple Pay", reference)} />
           )}
           {providers.klarna && (
             <button
@@ -71,7 +71,7 @@ export default function PaymentMethodFields({
         </div>
       )}
       {providers.card && (
-        <CardPaymentField items={items} subtotal={subtotal} onPaid={() => placeOrder("Card")} />
+        <CardPaymentField items={items} subtotal={subtotal} onPaid={(reference) => placeOrder("Card", reference)} />
       )}
       {error && <p className="mt-4 rounded-md bg-[#ffe3e3] px-3 py-2 text-sm font-bold text-wine">{error}</p>}
       {summary}

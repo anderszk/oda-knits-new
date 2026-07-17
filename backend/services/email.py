@@ -1,23 +1,18 @@
-import os
 import smtplib
 from email.message import EmailMessage
 
-from backend.config import CONTACT_EMAIL_TO
+from backend.config import CONTACT_EMAIL_TO, SMTP_FROM, SMTP_HOST, SMTP_PASSWORD, SMTP_PORT, SMTP_USER
 from backend.models.contact import ContactMessage
 from backend.models.orders import OrderPayload
 
 
 def send_contact_email(message: ContactMessage, created_at: str):
-    smtp_host = os.getenv("SMTP_HOST")
-    smtp_user = os.getenv("SMTP_USER", "")
-    smtp_password = os.getenv("SMTP_PASSWORD", "")
-    smtp_from = os.getenv("SMTP_FROM", smtp_user)
-    if not smtp_host or not smtp_from:
+    if not SMTP_HOST or not SMTP_FROM:
         raise RuntimeError("SMTP_HOST and SMTP_FROM or SMTP_USER must be set")
 
     email = EmailMessage()
     email["To"] = CONTACT_EMAIL_TO
-    email["From"] = smtp_from
+    email["From"] = SMTP_FROM
     email["Reply-To"] = str(message.email)
     email["Subject"] = f"Oda Knits Inquiry from {message.name}"
     email.set_content(
@@ -27,19 +22,15 @@ def send_contact_email(message: ContactMessage, created_at: str):
         f"{message.message}\n"
     )
 
-    with smtplib.SMTP(smtp_host, int(os.getenv("SMTP_PORT", "587")), timeout=10) as server:
+    with smtplib.SMTP(SMTP_HOST, SMTP_PORT, timeout=10) as server:
         server.starttls()
-        if smtp_user and smtp_password:
-            server.login(smtp_user, smtp_password)
+        if SMTP_USER and SMTP_PASSWORD:
+            server.login(SMTP_USER, SMTP_PASSWORD)
         server.send_message(email)
 
 
 def send_order_email(order: OrderPayload, order_id: str, subtotal: int, created_at: str):
-    smtp_host = os.getenv("SMTP_HOST")
-    smtp_user = os.getenv("SMTP_USER", "")
-    smtp_password = os.getenv("SMTP_PASSWORD", "")
-    smtp_from = os.getenv("SMTP_FROM", smtp_user)
-    if not smtp_host or not smtp_from:
+    if not SMTP_HOST or not SMTP_FROM:
         raise RuntimeError("SMTP_HOST and SMTP_FROM or SMTP_USER must be set")
 
     lines = "\n".join(
@@ -49,7 +40,7 @@ def send_order_email(order: OrderPayload, order_id: str, subtotal: int, created_
     shipping = order.shipping
     email = EmailMessage()
     email["To"] = CONTACT_EMAIL_TO
-    email["From"] = smtp_from
+    email["From"] = SMTP_FROM
     email["Reply-To"] = str(shipping.email)
     email["Subject"] = f"Oda Knits order {order_id}"
     email.set_content(
@@ -62,8 +53,8 @@ def send_order_email(order: OrderPayload, order_id: str, subtotal: int, created_
         f"{shipping.phone}\n{shipping.email}\n"
     )
 
-    with smtplib.SMTP(smtp_host, int(os.getenv("SMTP_PORT", "587")), timeout=10) as server:
+    with smtplib.SMTP(SMTP_HOST, SMTP_PORT, timeout=10) as server:
         server.starttls()
-        if smtp_user and smtp_password:
-            server.login(smtp_user, smtp_password)
+        if SMTP_USER and SMTP_PASSWORD:
+            server.login(SMTP_USER, SMTP_PASSWORD)
         server.send_message(email)

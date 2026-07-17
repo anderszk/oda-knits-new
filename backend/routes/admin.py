@@ -4,9 +4,15 @@ import time
 from datetime import UTC, datetime
 from pathlib import Path
 
-from fastapi import APIRouter, Depends, File, HTTPException, Request, UploadFile
+from fastapi import APIRouter, Cookie, Depends, File, HTTPException, Request, Response, UploadFile
 
-from backend.config import ADMIN_PASSWORD, ADMIN_SESSION_SECONDS, ADMIN_USERNAME, UPLOAD_DIR
+from backend.config import (
+    ADMIN_COOKIE_SECURE,
+    ADMIN_PASSWORD,
+    ADMIN_SESSION_SECONDS,
+    ADMIN_USERNAME,
+    UPLOAD_DIR,
+)
 from backend.models.auth import LoginPayload
 from backend.models.content import AboutPayload, ContactInfoPayload
 from backend.models.products import ProductPayload
@@ -16,9 +22,12 @@ from backend.repositories import content_repository, product_repository, project
 
 router = APIRouter()
 
+ADMIN_COOKIE_NAME = "admin_token"
+ADMIN_COOKIE_PATH = "/api/admin"
+
 
 @router.post("/api/admin/login")
-def admin_login(payload: LoginPayload, request: Request = None):
+def admin_login(payload: LoginPayload, response: Response, request: Request = None):
     check_rate_limit("login", f"{client_key(request)}:{payload.username}", 5, 15 * 60)
     if not ADMIN_PASSWORD:
         raise HTTPException(status_code=503, detail="Admin password is not configured")
@@ -29,7 +38,23 @@ def admin_login(payload: LoginPayload, request: Request = None):
         raise HTTPException(status_code=401, detail="Wrong username or password")
     token = secrets.token_urlsafe(32)
     admin_tokens[token] = time.monotonic() + ADMIN_SESSION_SECONDS
-    return {"token": token}
+    response.set_cookie(
+        key=ADMIN_COOKIE_NAME,
+        value=token,
+        max_age=ADMIN_SESSION_SECONDS,
+        path=ADMIN_COOKIE_PATH,
+        httponly=True,
+        secure=ADMIN_COOKIE_SECURE,
+        samesite="strict",
+    )
+    return {"ok": True}
+
+
+@router.post("/api/admin/logout")
+def admin_logout(response: Response, admin_token: str = Cookie(default="")):
+    admin_tokens.pop(admin_token, None)
+    response.delete_cookie(key=ADMIN_COOKIE_NAME, path=ADMIN_COOKIE_PATH)
+    return {"ok": True}
 
 
 @router.get("/api/admin/projects")
