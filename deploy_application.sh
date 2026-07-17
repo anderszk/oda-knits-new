@@ -17,7 +17,7 @@ rsync -az --delete \
   ./ "$SERVER:$APP_DIR/"
 
 ssh "$SERVER" "cd '$APP_DIR' && \
-  docker compose -f docker-compose.prod.yml up -d --build && \
+  docker compose -f docker-compose.prod.yml up -d --build --remove-orphans && \
   docker compose -f docker-compose.prod.yml run --rm --no-deps --user root --entrypoint chown backend -R 1000:1000 /data && \
   docker compose -f docker-compose.prod.yml restart backend caddy && \
   docker compose -f docker-compose.prod.yml ps"
