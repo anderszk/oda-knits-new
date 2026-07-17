@@ -10,10 +10,12 @@ temp_dir = tempfile.TemporaryDirectory()
 database_path = Path(temp_dir.name) / "contact.db"
 os.environ["DATABASE_PATH"] = str(database_path)
 os.environ["ADMIN_PASSWORD"] = "fangirl2012"
+os.environ["ALLOWED_ORIGINS"] = "http://localhost:5173"
 
 from fastapi import HTTPException, Response  # noqa: E402
+from fastapi.testclient import TestClient  # noqa: E402
 
-from backend.main import get_about, get_bootstrap, get_contact_info  # noqa: E402
+from backend.main import app, get_about, get_bootstrap, get_contact_info  # noqa: E402
 from backend.models.auth import LoginPayload  # noqa: E402
 from backend.models.contact import ContactMessage  # noqa: E402
 from backend.models.content import AboutPayload, ContactInfoPayload  # noqa: E402
@@ -387,6 +389,36 @@ class ContactTest(unittest.TestCase):
         self.assertEqual(sent[0]["To"], "oda.hennissen@gmail.com")
         self.assertEqual(sent[0]["Reply-To"], "ola@example.com")
         self.assertEqual(sent[0]["Subject"], "Oda Knits Inquiry from Ola")
+
+
+class ASGITest(unittest.TestCase):
+    """Exercises the actual ASGI app (CORS middleware, exception handlers) rather than
+    calling route functions directly, since those are invisible to the rest of this file."""
+
+    def setUp(self):
+        rate_limits.clear()
+        # raise_server_exceptions=False so unhandled errors surface as the real HTTP
+        # response a client would get, instead of propagating into the test itself.
+        self.client = TestClient(app, raise_server_exceptions=False)
+
+    def test_cors_allows_configured_origin(self):
+        response = self.client.get("/api/products", headers={"Origin": "http://localhost:5173"})
+        self.assertEqual(response.headers.get("access-control-allow-origin"), "http://localhost:5173")
+
+    def test_cors_rejects_unlisted_origin(self):
+        response = self.client.get("/api/products", headers={"Origin": "https://evil.example.com"})
+        self.assertNotIn("access-control-allow-origin", response.headers)
+
+    def test_sqlite_operational_error_returns_503(self):
+        with patch.object(project_repository, "list", side_effect=sqlite3.OperationalError("database is locked")):
+            response = self.client.get("/api/work")
+        self.assertEqual(response.status_code, 503)
+
+    def test_unexpected_error_returns_generic_500_without_leaking_details(self):
+        with patch.object(project_repository, "list", side_effect=RuntimeError("boom, secret internals")):
+            response = self.client.get("/api/work")
+        self.assertEqual(response.status_code, 500)
+        self.assertEqual(response.json(), {"detail": "Something went wrong. Please try again."})
 
 
 def tearDownModule():
