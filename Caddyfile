@@ -1,23 +1,16 @@
 http://odaknits.no, http://www.odaknits.no {
-	encode zstd gzip
-
-	handle /api/* {
-		reverse_proxy backend:8000
-	}
-
-	handle {
-		root * /srv
-		route {
-			try_files {path} /index.html
-			header /assets/* Cache-Control "public, max-age=31536000, immutable"
-			header /index.html Cache-Control "no-cache"
-			file_server
-		}
-	}
+	redir https://{host}{uri} permanent
 }
 
 https://odaknits.no, https://www.odaknits.no {
 	encode zstd gzip
+
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		X-Content-Type-Options nosniff
+		X-Frame-Options DENY
+		Referrer-Policy strict-origin-when-cross-origin
+	}
 
 	handle /api/* {
 		reverse_proxy backend:8000
