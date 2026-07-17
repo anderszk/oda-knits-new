@@ -150,7 +150,7 @@ export default function AdminDashboard() {
   const isAboutPage = window.location.pathname.startsWith("/admin/about");
   const isContactPage = window.location.pathname.startsWith("/admin/contact");
   const isProductsPage = window.location.pathname.startsWith("/admin/products");
-  const [token, setToken] = useState(() => adminApiClient.getToken());
+  const [loggedIn, setLoggedIn] = useState(() => adminApiClient.isLoggedIn());
   const [login, setLogin] = useState({ username: "", password: "" });
   const [projects, setProjects] = useState<Project[]>([]);
   const [editingId, setEditingId] = useState("");
@@ -186,20 +186,20 @@ export default function AdminDashboard() {
   }
 
   useEffect(() => {
-    if (!token) return;
+    if (!loggedIn) return;
     (isContactPage ? loadContact() : isAboutPage ? loadAbout() : isProductsPage ? loadProducts() : loadProjects()).catch((caught: Error) => {
       setError(caught.message);
-      setToken(adminApiClient.getToken());
+      setLoggedIn(adminApiClient.isLoggedIn());
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [token, isAboutPage, isContactPage, isProductsPage]);
+  }, [loggedIn, isAboutPage, isContactPage, isProductsPage]);
 
   async function submitLogin(event: FormEvent) {
     event.preventDefault();
     setError("");
     try {
-      const data = await adminApiClient.login(login.username, login.password);
-      setToken(data.token);
+      await adminApiClient.login(login.username, login.password);
+      setLoggedIn(true);
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Wrong username or password.");
     }
@@ -375,7 +375,7 @@ export default function AdminDashboard() {
     setMessage("Contact section updated.");
   }
 
-  if (!token) {
+  if (!loggedIn) {
     return (
       <main className="flex min-h-screen items-center justify-center bg-cream px-4 py-16 text-ink">
         <motion.form className="mx-auto grid max-w-sm gap-4 rounded-lg border border-ink/15 bg-white p-6 shadow-[0_24px_60px_rgba(61,48,70,.13)]" onSubmit={submitLogin} initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }}>
@@ -400,7 +400,7 @@ export default function AdminDashboard() {
           <a className={`${buttonClass} border px-4 py-2 font-bold ${isAboutPage ? "border-star bg-star text-white" : "border-ink bg-white hover:border-star hover:text-star"}`} href="/admin/about">About</a>
           <a className={`${buttonClass} border px-4 py-2 font-bold ${isProductsPage ? "border-star bg-star text-white" : "border-ink bg-white hover:border-star hover:text-star"}`} href="/admin/products">Products</a>
           <a className={`${buttonClass} border px-4 py-2 font-bold ${!isAboutPage && !isContactPage && !isProductsPage ? "border-star bg-star text-white" : "border-ink bg-white hover:border-star hover:text-star"}`} href="/admin">Projects</a>
-          <button className={`${buttonClass} border border-ink bg-white px-4 py-2 font-bold hover:border-star hover:text-star`} onClick={() => { adminApiClient.logout(); setToken(""); }} type="button">Log out</button>
+          <button className={`${buttonClass} border border-ink bg-white px-4 py-2 font-bold hover:border-star hover:text-star`} onClick={() => { adminApiClient.logout(); setLoggedIn(false); }} type="button">Log out</button>
         </div>
       </header>
 
