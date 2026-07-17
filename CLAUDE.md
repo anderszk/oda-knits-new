@@ -10,6 +10,11 @@ touch; the shop owner manages products/projects/content through an admin
 dashboard. Small, low-traffic, single-maintainer project — favor simple,
 boring solutions over infrastructure that needs to earn its keep.
 
+If `docs/codebase-audit.md` exists locally, check it before doing security-
+or payments-adjacent work — it's a maintained, pruned (High/Medium only)
+punch list of known issues, kept out of git (`.gitignore`) since it's a
+working doc rather than project documentation.
+
 ## Architecture
 
 - **Frontend** (`frontend/src`): Vite + React 19 + TypeScript (strict). No
@@ -87,12 +92,34 @@ database/         connection, migrations, schema.sql, seed data
   cookie, pending-payment state in `sessionStorage` across Klarna/Vipps
   redirects, `window.location` navigation. This has to stay client-driven —
   don't try to move it server-side.
+- **Checkout is real, not a demo** — four live payment methods, all wired to
+  actual providers: Card (`CardPaymentField.tsx`, split Stripe Elements —
+  separate `cardNumber`/`cardExpiry`/`cardCvc` fields; Stripe only offers a
+  combined MM/YY expiry, splitting month/year further isn't possible while
+  keeping raw card data inside Stripe's secure iframes), Apple Pay
+  (`ApplePayButton.tsx`, Stripe's Payment Request Button — renders Apple's
+  own official mark automatically), Klarna, and Vipps (redirect + status
+  poll). `PaymentMethodFields.tsx` shows Apple Pay/Klarna/Vipps as compact
+  "express" options above a divider, with the card form as the primary flow
+  below. `POST /api/orders` independently re-verifies the payment (status +
+  charged amount) with Stripe/Vipps server-side before creating the order —
+  don't reintroduce a path that trusts the client's post-payment callback
+  alone.
+- Payment provider logos (`frontend/src/img/payment-logos/`) are the
+  providers' own official brand-kit assets (Klarna's checkout/button asset
+  pack from `docs.klarna.com`, Vipps' wordmark from their linked GitHub
+  brand kit) — both providers' guidelines prohibit recoloring/altering the
+  mark. If you touch these, pull fresh assets from the same official
+  sources rather than hand-drawing a substitute, and only constrain size via
+  height + `w-auto` so they're never stretched or recolored via CSS.
 - `AboutCharmScene`, `YarnScene`, `StoreScene` are Three.js/WebGL and
   browser-only. If this app ever gains SSR, these must be lazy-loaded
   client-only (e.g. `next/dynamic({ ssr: false })` equivalent) — they will
   crash on the server otherwise.
-- No SEO metadata exists yet (static `<title>` only, no description/OG
-  tags) — known gap, not yet addressed.
+- Basic SEO exists (`index.html` has a meta description; `public/robots.txt`
+  allows all crawlers) but no OG/social-preview tags yet — known gap, not
+  yet addressed (see the Next.js/BFF note below for why OG tags specifically
+  would require SSR to matter).
 
 ## Backend conventions
 
@@ -140,9 +167,10 @@ These patterns are already established across `orders`, `payments`, and
   before being used to look anything up. Don't pass client-supplied ids
   through to an external API or a DB query unchecked.
 - **Feature flags via config-truthiness, not a separate flags system**:
-  optional providers (Stripe, Vipps) are "enabled" simply by whether their
-  secret/credentials env vars are set (e.g. `VIPPS_CONFIGURED`), surfaced
-  to the frontend through a small `/api/payments/config`-style endpoint so
+  optional providers (Stripe for Card/Apple Pay/Klarna, Vipps) are "enabled"
+  simply by whether their secret/credentials env vars are set (e.g.
+  `VIPPS_CONFIGURED`, `bool(STRIPE_SECRET_KEY)`), surfaced to the frontend
+  through `GET /api/payments/config` (`{card, applePay, klarna, vipps}`) so
   the UI can hide what isn't configured. Reuse this shape for any new
   optional integration instead of adding a config service.
 - **Shared pydantic bases**: `StrippedModel` (auto-trims string/list-of-string
