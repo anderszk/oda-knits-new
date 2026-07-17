@@ -31,6 +31,20 @@ class ProductRepository:
         with get_connection() as connection:
             connection.execute("DELETE FROM products WHERE id = ?", (product_id,))
 
+    def decrement_stock(self, product_id: str, quantity: int, connection=None) -> bool:
+        """Atomically reduce stock if enough remains. Returns False if not enough stock was left."""
+        def run(conn):
+            cursor = conn.execute(
+                "UPDATE products SET stock = stock - ? WHERE id = ? AND stock >= ?",
+                (quantity, product_id, quantity),
+            )
+            return cursor.rowcount > 0
+
+        if connection is not None:
+            return run(connection)
+        with get_connection() as connection:
+            return run(connection)
+
     def save(self, product, product_id=None):
         with get_connection() as connection:
             final_id = product_id or product.id or unique_id(connection, "products", product.title, "product")

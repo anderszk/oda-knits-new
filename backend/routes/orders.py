@@ -8,9 +8,10 @@ from datetime import UTC, datetime
 
 from fastapi import APIRouter, HTTPException, Request
 
+from database.connection import get_connection
 from backend.models.orders import OrderPayload
 from backend.services.email import send_order_email
-from backend.services.payments import call_stripe, call_vipps
+from backend.services.payments import call_stripe, call_vipps, validate_and_price
 from backend.services.security import check_rate_limit, client_key
 from backend.repositories import order_repository, product_repository
 
@@ -49,27 +50,29 @@ def _verify_payment(payment_method: str, payment_reference: str, subtotal: int) 
 @router.post("/api/orders", status_code=201)
 def create_order(order: OrderPayload, request: Request = None):
     check_rate_limit("order", client_key(request), 5, 10 * 60)
-    catalog = {product["id"]: product for product in product_repository.list()}
-    for item in order.items:
-        product = catalog.get(item.id)
-        if not product or item.price != product["price"] or item.size not in product["sizes"]:
-            raise HTTPException(status_code=400, detail="One of the items in your basket is no longer available")
-
-    subtotal = sum(item.price * item.quantity for item in order.items)
+    subtotal, quantities = validate_and_price(order.items)
     _verify_payment(order.payment_method, order.payment_reference, subtotal)
 
     order_id = f"OK-{datetime.now(UTC).strftime('%y%m%d')}-{secrets.token_hex(3).upper()}"
     created_at = datetime.now(UTC).isoformat()
     try:
-        order_repository.create(
-            order_id,
-            json.dumps([item.model_dump() for item in order.items]),
-            subtotal,
-            json.dumps(order.shipping.model_dump(mode="json")),
-            order.payment_method,
-            order.payment_reference,
-            created_at,
-        )
+        with get_connection() as connection:
+            order_repository.create(
+                order_id,
+                json.dumps([item.model_dump() for item in order.items]),
+                subtotal,
+                json.dumps(order.shipping.model_dump(mode="json")),
+                order.payment_method,
+                order.payment_reference,
+                created_at,
+                connection=connection,
+            )
+            for item_id, quantity in quantities.items():
+                if not product_repository.decrement_stock(item_id, quantity, connection=connection):
+                    logger.error(
+                        "Stock oversold for product %s on order %s: needed %s more than available",
+                        item_id, order_id, quantity,
+                    )
     except sqlite3.IntegrityError:
         raise HTTPException(status_code=409, detail="This payment has already been used for an order")
     try:
