@@ -1,6 +1,6 @@
 import type { ShippingFormState } from "@/models/order";
 
-const inputClass = "min-w-0 w-full rounded-md border border-ink/20 bg-white px-3 py-2.5 transition hover:border-star/70 focus:border-star focus:outline-none focus:ring-2 focus:ring-star/20";
+const inputClass = "min-w-0 w-full rounded-md border border-ink/20 bg-white px-3 py-2.5 text-base transition hover:border-star/70 focus:border-star focus:outline-none focus:ring-2 focus:ring-star/20";
 const labelClass = "grid gap-1.5 text-sm font-bold text-[#625768]";
 
 interface ShippingFieldsProps {

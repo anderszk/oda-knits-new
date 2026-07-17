@@ -46,7 +46,7 @@ export default function ProjectModal({ project, onClose }: ProjectModalProps) {
       onClose={onClose}
       shareButton={<ShareButton url={window.location.href} title={project.title} text={project.description} />}
     >
-      <div className="relative min-h-full overflow-hidden bg-mint max-[620px]:h-[39svh] max-[620px]:min-h-[17rem]" onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
+      <div         className="relative flex min-h-full items-center justify-center overflow-hidden max-[620px]:h-[30svh] max-[620px]:min-h-[13rem]" onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
         <AnimatePresence mode="wait">
           <motion.img
             className="block h-full min-h-[34rem] w-full object-cover max-[620px]:h-full max-[620px]:min-h-0"
@@ -63,12 +63,12 @@ export default function ProjectModal({ project, onClose }: ProjectModalProps) {
         <ImageCarouselNav imageIndex={imageIndex} imageCount={images.length} onChange={changeImage} />
       </div>
       <div className="px-10 pt-14 pb-10 max-[900px]:px-6 max-[900px]:pt-14 max-[900px]:pb-6 max-[620px]:overflow-y-auto max-[620px]:px-4 max-[620px]:pt-0 max-[620px]:pb-8">
-        <div className="max-[620px]:sticky max-[620px]:top-0 max-[620px]:z-10 max-[620px]:-mx-4 max-[620px]:border-b max-[620px]:border-ink/10 max-[620px]:bg-cream max-[620px]:px-4 max-[620px]:pt-5 max-[620px]:pb-4">
-          <p className="mb-3 text-xs font-extrabold uppercase text-wine max-[620px]:mb-2">{project.category}</p>
-          <h2 className="mb-4 font-display text-[3.3rem] leading-[0.96] max-[900px]:text-[2.7rem] max-[620px]:mb-2 max-[620px]:pr-8 max-[620px]:text-[2.1rem]" id="project-title">{project.title}</h2>
-          <p className="text-[1.05rem] leading-relaxed text-[#665e6b] max-[620px]:line-clamp-3 max-[620px]:text-[0.98rem]">{project.description}</p>
+        <div className="max-[620px]:sticky max-[620px]:top-0 max-[620px]:z-10 max-[620px]:-mx-4 max-[620px]:border-b max-[620px]:border-ink/10 max-[620px]:bg-cream max-[620px]:px-4 max-[620px]:pt-3 max-[620px]:pb-2.5">
+          <p className="mb-3 text-xs font-extrabold uppercase text-wine max-[620px]:mb-1">{project.category}</p>
+          <h2 className="mb-4 font-display text-[3.3rem] leading-[0.96] max-[900px]:text-[2.7rem] max-[620px]:mb-1 max-[620px]:pr-8 max-[620px]:text-[1.5rem]" id="project-title">{project.title}</h2>
+          <p className="text-[1.05rem] leading-relaxed text-[#665e6b] max-[620px]:line-clamp-2 max-[620px]:text-[0.92rem]">{project.description}</p>
         </div>
-        <ColorSwatchList colors={colors} className="my-6 flex flex-wrap gap-2 max-[620px]:my-4" label="Project colors" />
+        <ColorSwatchList colors={colors} className="my-6 flex flex-wrap gap-2 max-[620px]:my-3" label="Project colors" />
         <ImageThumbnailStrip
           images={images}
           activeIndex={imageIndex}

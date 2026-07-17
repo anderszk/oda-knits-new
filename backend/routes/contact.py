@@ -13,7 +13,7 @@ router = APIRouter()
 
 @router.post("/api/contact", status_code=201)
 def contact(message: ContactMessage, request: Request = None):
-    check_rate_limit("contact", client_key(request), 3, 5 * 60)
+    check_rate_limit("contact", client_key(request), 10, 5 * 60)
     created_at = datetime.now(UTC).isoformat()
     message_id = contact_message_repository.create(message.name, str(message.email), message.message, created_at)
     try:
