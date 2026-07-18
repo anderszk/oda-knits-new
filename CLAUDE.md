@@ -22,11 +22,10 @@ working doc rather than project documentation.
   `/api/*` paths. In dev, Vite's dev-server proxy forwards `/api` to the
   backend container; in prod, Caddy does the same path-based routing in
   front of static files. There is no Node server in production.
-- **Backend** (`backend/`, `database/`): FastAPI + SQLite. Layered as
+- **Backend** (`backend/`, `database/`): FastAPI + Postgres. Layered as
   `routes/` (HTTP endpoints) → `services/` (auth, email, payments logic) →
-  `repositories/` (SQLite data access) → `database/` (connection,
-  migrations, `schema.sql`). Config is centralized and env-driven in
-  `backend/config.py`.
+  `repositories/` (Postgres data access) → `database/` (connection,
+  migrations). Config is centralized and env-driven in `backend/config.py`.
 - **Infra**: Docker Compose for dev (`docker-compose.yml`, hot reload via
   bind mounts + `--reload`/Vite HMR) and prod (`docker-compose.prod.yml`).
   Caddy terminates TLS and reverse-proxies. Deployed to a single
@@ -51,10 +50,10 @@ frontend/src/
 backend/
   routes/         FastAPI endpoint modules (admin, contact, instagram, orders, payments)
   services/       security (admin tokens + rate limiting), email, payments
-  repositories/   SQLite access per entity (products, projects, content, orders, contact_messages)
+  repositories/   Postgres access per entity (products, projects, content, orders, contact_messages)
   models/         pydantic request/response models
   config.py       all env vars, single source of truth for config
-database/         connection, migrations, schema.sql, seed data
+database/         connection.py, migrate.py, migrations/*.sql, seed data
 ```
 
 ## Commands
@@ -199,15 +198,27 @@ These patterns are already established across `orders`, `payments`, and
   `frontend/src/models/order.ts`). Don't let snake_case leak into React
   state, and don't let camelCase leak into request bodies — map explicitly
   like the existing code does.
-- **No migration framework** (no Alembic/etc). `database/schema.sql` is
-  executed idempotently on every boot, and schema changes since the
-  original shape are hand-written, guarded `ALTER TABLE` blocks appended to
-  `database/migrations.py` (checked via `PRAGMA table_info` so they're safe
-  to re-run). Follow this pattern for new columns/tables — don't introduce
-  a migration tool for what's currently a single small SQLite file.
+- **Numbered, tracked SQL migrations** (`database/migrations/000_schema.sql`,
+  `001_*.sql`, `002_*.sql`, ...). `database/migrate.py`'s `init_db()` tracks
+  which versions have already run in a `schema_migrations` table and only
+  applies new ones on each boot — each file runs exactly once, ever, in the
+  order given by its numeric prefix. `000_schema.sql` is the original
+  baseline; every later structural change (new column, new table, backfill)
+  gets its own new numbered file — don't edit an already-applied migration,
+  add a new one. Migration files are still written as idempotent SQL
+  (`CREATE ... IF NOT EXISTS`, `ADD COLUMN IF NOT EXISTS`) even though
+  they're also tracked, as a safety net — see the standing-decision entry
+  below for why.
 
 ## Standing architectural decisions (don't relitigate without cause)
 
+- Migrations moved from a single idempotent `schema.sql` (guarded ad hoc
+  `ALTER TABLE` blocks, checked via SQLite's `PRAGMA table_info`) to
+  numbered, tracked SQL files in `database/migrations/` once the backend
+  moved from SQLite to Postgres. Postgres's native `ADD COLUMN IF NOT
+  EXISTS` made the old guard code unnecessary, and a `schema_migrations`
+  tracking table is the standard, still-boring choice for a real (if small)
+  Postgres database. Don't reintroduce a single growing `schema.sql`.
 - No Next.js/BFF migration is planned. If revisited, the earlier discussion
   concluded: don't do a full framework migration for RSC alone (this app's
   server-fetchable surface is basically just the `/api/bootstrap` call);

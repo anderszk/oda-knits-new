@@ -21,7 +21,7 @@ dev = ["pytest", "httpx"]
 include = ["backend*", "database*"]
 
 [tool.setuptools.package-data]
-database = ["*.sql"]
+database = ["*.sql", "migrations/*.sql"]
 
 [tool.pytest.ini_options]
 testpaths = ["backend"]

@@ -7,7 +7,7 @@ Safe to re-run - existing rows (matched by id) are left untouched.
 import json
 
 from database.connection import get_connection
-from database.migrations import init_db
+from database.migrate import init_db
 
 SEED_PRODUCTS = [
     {
@@ -112,9 +112,10 @@ SEED_PRODUCTS = [
 def seed():
     init_db()
     with get_connection() as connection:
-        connection.executemany(
-            "INSERT OR IGNORE INTO products (id, title, category, price, description, colors, sizes, badge, stock, image, images) "
-            "VALUES (:id, :title, :category, :price, :description, :colors, :sizes, :badge, :stock, :image, :images)",
+        connection.cursor().executemany(
+            "INSERT INTO products (id, title, category, price, description, colors, sizes, badge, stock, image, images) "
+            "VALUES (%(id)s, %(title)s, %(category)s, %(price)s, %(description)s, %(colors)s, %(sizes)s, %(badge)s, %(stock)s, %(image)s, %(images)s) "
+            "ON CONFLICT (id) DO NOTHING",
             [
                 {
                     **product,

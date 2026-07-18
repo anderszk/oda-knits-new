@@ -9,7 +9,7 @@ from fastapi.staticfiles import StaticFiles
 
 from backend.config import ALLOWED_ORIGINS, UPLOAD_DIR
 from backend.routes import admin, contact, instagram, orders, payments
-from database.migrations import init_db
+from database.migrate import init_db
 from backend.repositories import content_repository, product_repository, project_repository
 
 logger = logging.getLogger(__name__)

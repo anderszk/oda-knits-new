@@ -37,7 +37,6 @@ CREATE TABLE IF NOT EXISTS orders (
     subtotal INTEGER NOT NULL,
     shipping TEXT NOT NULL,
     payment_method TEXT NOT NULL,
-    payment_reference TEXT NOT NULL DEFAULT '',
     created_at TEXT NOT NULL
 );
 
@@ -50,9 +49,7 @@ CREATE TABLE IF NOT EXISTS products (
     colors TEXT NOT NULL,
     sizes TEXT NOT NULL,
     badge TEXT NOT NULL,
-    stock INTEGER NOT NULL,
-    image TEXT NOT NULL DEFAULT '',
-    images TEXT NOT NULL DEFAULT '[]'
+    stock INTEGER NOT NULL
 );
 
 CREATE INDEX IF NOT EXISTS idx_projects_created_at ON projects(created_at);
