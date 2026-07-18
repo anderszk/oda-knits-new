@@ -56,8 +56,8 @@ export default function ModalShell({
         exit={closingBySwipe ? { opacity: 0, y: 420 } : { opacity: 0, y: 18, scale: 0.98 }}
         transition={{ type: "spring", stiffness: 330, damping: 30 }}
       >
-        <div className="absolute inset-x-0 top-0 z-20 hidden h-7 touch-none max-[620px]:block" onPointerDown={startDrag}>
-          <span className="absolute top-2 left-1/2 h-1 w-12 -translate-x-1/2 rounded-full bg-ink/25" aria-hidden="true" />
+        <div className="absolute inset-x-0 top-0 z-20 hidden h-8 touch-none max-[620px]:block" onPointerDown={startDrag}>
+          <span className="absolute top-2 left-1/2 h-1 w-12 -translate-x-1/2 rounded-full bg-ink/50" aria-hidden="true" />
         </div>
         {shareButton}
         <ModalCloseButton ref={closeButtonRef} onClick={onClose} label={closeLabel} />

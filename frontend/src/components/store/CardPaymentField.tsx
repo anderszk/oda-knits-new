@@ -13,7 +13,7 @@ interface CardPaymentFieldProps {
 
 const ELEMENT_STYLE = {
   base: {
-    fontSize: "15px",
+    fontSize: "16px",
     color: "#241e29",
     fontFamily: "inherit",
     "::placeholder": { color: "#b7adbb" },

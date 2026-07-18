@@ -91,12 +91,12 @@ export default function ProductModal({ product, onClose, onBuyNow }: ProductModa
         <ImageCarouselNav imageIndex={imageIndex} imageCount={images.length} onChange={changeImage} />
       </div>
       <div className="px-10 pt-14 pb-10 max-[900px]:px-6 max-[900px]:pt-14 max-[900px]:pb-6 max-[620px]:overflow-y-auto max-[620px]:px-4 max-[620px]:pt-0 max-[620px]:pb-8">
-        <div className="max-[620px]:sticky max-[620px]:top-0 max-[620px]:z-10 max-[620px]:-mx-4 max-[620px]:border-b max-[620px]:border-ink/10 max-[620px]:bg-cream max-[620px]:px-4 max-[620px]:pt-5 max-[620px]:pb-4">
-          <p className="mb-3 text-xs font-extrabold uppercase text-wine max-[620px]:mb-2">{product.category}</p>
-          <h2 className="mb-2 font-display text-[3.1rem] leading-[0.96] max-[900px]:text-[2.6rem] max-[620px]:mb-1 max-[620px]:pr-8 max-[620px]:text-[2.1rem]" id="product-title">{product.title}</h2>
-          <p className="m-0 text-xl font-extrabold text-rose">{formatPrice(product.price)}</p>
+        <div className="max-[620px]:sticky max-[620px]:top-0 max-[620px]:z-10 max-[620px]:-mx-4 max-[620px]:border-b max-[620px]:border-ink/10 max-[620px]:bg-cream max-[620px]:px-4 max-[620px]:pt-3 max-[620px]:pb-2.5">
+          <p className="mb-3 text-xs font-extrabold uppercase text-wine max-[620px]:mb-1">{product.category}</p>
+          <h2 className="mb-2 font-display text-[3.1rem] leading-[0.96] max-[900px]:text-[2.6rem] max-[620px]:mb-1 max-[620px]:pr-8 max-[620px]:text-[1.5rem]" id="product-title">{product.title}</h2>
+          <p className="m-0 text-xl font-extrabold text-rose max-[620px]:text-base">{formatPrice(product.price)}</p>
         </div>
-        <p className="mt-4 text-[1.02rem] leading-relaxed text-[#665e6b] max-[620px]:mt-3 max-[620px]:text-[0.98rem]">{product.description}</p>
+        <p className="mt-4 text-[1.02rem] leading-relaxed text-[#665e6b] max-[620px]:mt-2 max-[620px]:text-[0.92rem]">{product.description}</p>
 
         <ColorSwatchList colors={colors} className="mt-5 flex flex-wrap gap-2" label="Available colors" />
 
