@@ -7,6 +7,7 @@ RUN npm install
 
 COPY index.html ./
 COPY vite.config.ts tsconfig.json tsconfig.node.json ./
+COPY public ./public
 COPY frontend ./frontend
 
 RUN chown -R node:node /app
