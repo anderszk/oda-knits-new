@@ -1,14 +1,16 @@
 import os
-import sqlite3
-import tempfile
 import time
 import unittest
-from pathlib import Path
 from unittest.mock import patch
 
-temp_dir = tempfile.TemporaryDirectory()
-database_path = Path(temp_dir.name) / "contact.db"
-os.environ["DATABASE_PATH"] = str(database_path)
+import psycopg
+
+# Always point at a dedicated test database, never whatever DATABASE_URL the
+# environment already has set for the app (e.g. inside the dev `backend`
+# container) - tests truncate tables below, which would otherwise wipe real data.
+os.environ["DATABASE_URL"] = os.environ.get(
+    "TEST_DATABASE_URL", "postgresql://odaknits:devpassword@localhost:5432/odaknits_test"
+)
 os.environ["ADMIN_PASSWORD"] = "fangirl2012"
 os.environ["ALLOWED_ORIGINS"] = "http://localhost:5173"
 
@@ -16,6 +18,7 @@ from fastapi import HTTPException, Response  # noqa: E402
 from fastapi.testclient import TestClient  # noqa: E402
 
 from backend.main import app, get_about, get_bootstrap, get_contact_info  # noqa: E402
+from database.connection import get_connection  # noqa: E402
 from backend.models.auth import LoginPayload  # noqa: E402
 from backend.models.contact import ContactMessage  # noqa: E402
 from backend.models.content import AboutPayload, ContactInfoPayload  # noqa: E402
@@ -40,6 +43,14 @@ from backend.routes.payments import create_card_intent  # noqa: E402
 from backend.repositories import product_repository, project_repository  # noqa: E402
 from backend.services.email import send_contact_email  # noqa: E402
 from backend.services.security import admin_tokens, rate_limits, require_admin  # noqa: E402
+
+# `backend.main` calls `init_db()` at import time (above), creating tables if they
+# don't exist. Postgres, unlike the old tempfile-per-run SQLite db, is a persistent
+# shared instance, so start every test run from an empty state.
+with get_connection() as _connection:
+    _connection.execute(
+        "TRUNCATE contact_messages, projects, site_content, orders, products RESTART IDENTITY CASCADE"
+    )
 
 
 class ContactTest(unittest.TestCase):
@@ -118,9 +129,9 @@ class ContactTest(unittest.TestCase):
         with patch("backend.routes.contact.send_contact_email") as email_sender:
             result = contact(message)
 
-        with sqlite3.connect(database_path) as database:
-            saved = database.execute(
-                "SELECT name, email, message FROM contact_messages WHERE id = ?",
+        with get_connection() as connection:
+            saved = connection.execute(
+                "SELECT name, email, message FROM contact_messages WHERE id = %s",
                 (result["id"],),
             ).fetchone()
 
@@ -409,8 +420,8 @@ class ASGITest(unittest.TestCase):
         response = self.client.get("/api/products", headers={"Origin": "https://evil.example.com"})
         self.assertNotIn("access-control-allow-origin", response.headers)
 
-    def test_sqlite_operational_error_returns_503(self):
-        with patch.object(project_repository, "list", side_effect=sqlite3.OperationalError("database is locked")):
+    def test_database_operational_error_returns_503(self):
+        with patch.object(project_repository, "list", side_effect=psycopg.OperationalError("connection lost")):
             response = self.client.get("/api/work")
         self.assertEqual(response.status_code, 503)
 
@@ -419,10 +430,6 @@ class ASGITest(unittest.TestCase):
             response = self.client.get("/api/work")
         self.assertEqual(response.status_code, 500)
         self.assertEqual(response.json(), {"detail": "Something went wrong. Please try again."})
-
-
-def tearDownModule():
-    temp_dir.cleanup()
 
 
 if __name__ == "__main__":

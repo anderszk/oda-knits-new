@@ -37,13 +37,14 @@ class ContentRepository:
 
     def _load(self, key, fallback):
         with get_connection() as connection:
-            row = connection.execute("SELECT value FROM site_content WHERE key = ?", (key,)).fetchone()
+            row = connection.execute("SELECT value FROM site_content WHERE key = %s", (key,)).fetchone()
         return json.loads(row[0]) if row else fallback
 
     def _save(self, key, value):
         with get_connection() as connection:
             connection.execute(
-                "INSERT OR REPLACE INTO site_content (key, value, updated_at) VALUES (?, ?, ?)",
+                "INSERT INTO site_content (key, value, updated_at) VALUES (%s, %s, %s) "
+                "ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = EXCLUDED.updated_at",
                 (key, json.dumps(value), datetime.now(UTC).isoformat()),
             )
         return value

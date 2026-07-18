@@ -3,9 +3,9 @@ import logging
 import re
 import secrets
 import smtplib
-import sqlite3
 from datetime import UTC, datetime
 
+import psycopg
 from fastapi import APIRouter, HTTPException, Request
 
 from database.connection import get_connection
@@ -73,7 +73,7 @@ def create_order(order: OrderPayload, request: Request = None):
                         "Stock oversold for product %s on order %s: needed %s more than available",
                         item_id, order_id, quantity,
                     )
-    except sqlite3.IntegrityError:
+    except psycopg.errors.UniqueViolation:
         raise HTTPException(status_code=409, detail="This payment has already been used for an order")
     try:
         send_order_email(order, order_id, subtotal, created_at)

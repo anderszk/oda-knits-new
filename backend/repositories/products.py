@@ -25,17 +25,17 @@ class ProductRepository:
 
     def exists(self, product_id: str) -> bool:
         with get_connection() as connection:
-            return connection.execute("SELECT 1 FROM products WHERE id = ?", (product_id,)).fetchone() is not None
+            return connection.execute("SELECT 1 FROM products WHERE id = %s", (product_id,)).fetchone() is not None
 
     def delete(self, product_id: str):
         with get_connection() as connection:
-            connection.execute("DELETE FROM products WHERE id = ?", (product_id,))
+            connection.execute("DELETE FROM products WHERE id = %s", (product_id,))
 
     def decrement_stock(self, product_id: str, quantity: int, connection=None) -> bool:
         """Atomically reduce stock if enough remains. Returns False if not enough stock was left."""
         def run(conn):
             cursor = conn.execute(
-                "UPDATE products SET stock = stock - ? WHERE id = ? AND stock >= ?",
+                "UPDATE products SET stock = stock - %s WHERE id = %s AND stock >= %s",
                 (quantity, product_id, quantity),
             )
             return cursor.rowcount > 0
@@ -65,9 +65,11 @@ class ProductRepository:
                 "image": cover,
                 "images": json.dumps(images),
             }
-            placeholders = ", ".join(["?"] * len(self.columns))
+            placeholders = ", ".join(["%s"] * len(self.columns))
+            updates = ", ".join(f"{column} = EXCLUDED.{column}" for column in self.columns if column != "id")
             connection.execute(
-                f"INSERT OR REPLACE INTO products ({', '.join(self.columns)}) VALUES ({placeholders})",
+                f"INSERT INTO products ({', '.join(self.columns)}) VALUES ({placeholders}) "
+                f"ON CONFLICT (id) DO UPDATE SET {updates}",
                 tuple(values[column] for column in self.columns),
             )
         return {

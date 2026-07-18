@@ -1,22 +1,19 @@
 import os
-import sqlite3
 from contextlib import contextmanager
-from pathlib import Path
 
-DATABASE_PATH = Path(os.getenv("DATABASE_PATH", "database/oda-knit.db"))
-DATABASE_PATH.parent.mkdir(parents=True, exist_ok=True)
+import psycopg
+
+DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://odaknits:devpassword@localhost:5432/odaknits")
 
 
 @contextmanager
 def get_connection():
-    """Yield a sqlite3 connection, committing on success and rolling back on any error."""
-    connection = sqlite3.connect(DATABASE_PATH)
+    """Yield a psycopg connection, committing on success and rolling back on any error."""
+    connection = psycopg.connect(DATABASE_URL)
     try:
-        connection.execute("PRAGMA busy_timeout = 5000")
-        connection.execute("PRAGMA journal_mode = WAL")
         yield connection
         connection.commit()
-    except sqlite3.Error:
+    except psycopg.Error:
         connection.rollback()
         raise
     finally:
