@@ -10,7 +10,7 @@ import ModalShell from "@/components/shared/ModalShell";
 import ShareButton from "@/components/shared/ShareButton";
 import { swatchStyle } from "@/components/shared/swatchStyle";
 import { useDismissableModal } from "@/components/shared/useDismissableModal";
-import { isLowStock, type Product } from "@/models/product";
+import type { Product } from "@/models/product";
 
 interface ProductModalProps {
   product: Product;
@@ -25,7 +25,6 @@ export default function ProductModal({ product, onClose, onBuyNow }: ProductModa
   const [added, setAdded] = useState(false);
   const colors = product.colors || [];
   const images = product.images?.length ? product.images : [product.image].filter(Boolean);
-  const lowStock = isLowStock(product.stock);
 
   const {
     closeButtonRef, modalRef, imageIndex, setImageIndex, changeImage,
@@ -87,7 +86,6 @@ export default function ProductModal({ product, onClose, onBuyNow }: ProductModa
           <span className="select-none font-display text-[7rem] leading-none text-white/25 max-[900px]:text-[5.5rem]" aria-hidden="true">*</span>
         )}
         {product.badge && <span className="absolute top-3 left-3 rounded-full border border-ink bg-cream px-2 py-1 text-[0.72rem] font-extrabold">{product.badge}</span>}
-        {lowStock && <span className="absolute bottom-3 left-3 rounded-full border border-ink bg-[#fff3d6] px-2 py-1 text-[0.72rem] font-extrabold">Only {product.stock} left</span>}
         <ImageCarouselNav imageIndex={imageIndex} imageCount={images.length} onChange={changeImage} />
       </div>
       <div className="px-10 pt-14 pb-10 max-[900px]:px-6 max-[900px]:pt-14 max-[900px]:pb-6 max-[620px]:overflow-y-auto max-[620px]:px-4 max-[620px]:pt-0 max-[620px]:pb-8">

@@ -19,7 +19,6 @@ SEED_PRODUCTS = [
         "colors": [{"name": "Strawberry", "hex": "#e0607a"}, {"name": "Cream", "hex": "#fff9f0"}],
         "sizes": ["One size"],
         "badge": "Bestseller",
-        "stock": 6,
         "image": "https://images.unsplash.com/photo-1544967919-44c1ef2f9e7a?w=900&h=900&fit=crop&crop=entropy&q=80&auto=format&fm=jpg",
     },
     {
@@ -31,7 +30,6 @@ SEED_PRODUCTS = [
         "colors": [{"name": "Mint", "hex": "#a9ddce"}, {"name": "Blush", "hex": "#f7c9d6"}],
         "sizes": ["XS/S", "M/L", "XL/XXL"],
         "badge": "New",
-        "stock": 4,
         "image": "https://images.unsplash.com/photo-1706864685919-abccadda8d0e?w=900&h=900&fit=crop&crop=entropy&q=80&auto=format&fm=jpg",
     },
     {
@@ -43,7 +41,6 @@ SEED_PRODUCTS = [
         "colors": [{"name": "Sunshine", "hex": "#f6dc74"}, {"name": "Lavender", "hex": "#c6b6ec"}],
         "sizes": ["One size"],
         "badge": "",
-        "stock": 11,
         "image": "https://images.unsplash.com/photo-1636576507919-929955a345c8?w=900&h=900&fit=crop&crop=entropy&q=80&auto=format&fm=jpg",
     },
     {
@@ -55,7 +52,6 @@ SEED_PRODUCTS = [
         "colors": [{"name": "Rose", "hex": "#d7658a"}, {"name": "Mint", "hex": "#dff3ec"}],
         "sizes": ["S", "M", "L"],
         "badge": "",
-        "stock": 9,
         "image": "https://images.unsplash.com/photo-1680420562679-74976cfbc0dc?w=900&h=900&fit=crop&crop=entropy&q=80&auto=format&fm=jpg",
     },
     {
@@ -67,7 +63,6 @@ SEED_PRODUCTS = [
         "colors": [{"name": "Wine", "hex": "#9a4264"}, {"name": "Star", "hex": "#bd5bd3"}],
         "sizes": ["XS/S", "M/L", "XL/XXL"],
         "badge": "Limited",
-        "stock": 2,
         "image": "https://images.unsplash.com/photo-1610288311735-39b7facbd095?w=900&h=900&fit=crop&crop=entropy&q=80&auto=format&fm=jpg",
     },
     {
@@ -79,7 +74,6 @@ SEED_PRODUCTS = [
         "colors": [{"name": "Lavender", "hex": "#c6b6ec"}, {"name": "Cream", "hex": "#fff9f0"}],
         "sizes": ["36-38", "39-41", "42-44"],
         "badge": "",
-        "stock": 14,
         "image": "https://images.unsplash.com/photo-1589895869111-cab6bf8354c8?w=900&h=900&fit=crop&crop=entropy&q=80&auto=format&fm=jpg",
     },
     {
@@ -91,7 +85,6 @@ SEED_PRODUCTS = [
         "colors": [{"name": "Honey", "hex": "#e3a85e"}, {"name": "Cream", "hex": "#fff9f0"}],
         "sizes": ["XS/S", "M/L"],
         "badge": "",
-        "stock": 5,
         "image": "https://images.unsplash.com/photo-1635327408138-3d1c42124523?w=900&h=900&fit=crop&crop=entropy&q=80&auto=format&fm=jpg",
     },
     {
@@ -103,7 +96,6 @@ SEED_PRODUCTS = [
         "colors": [{"name": "Bubblegum", "hex": "#f2a7c6"}, {"name": "Star", "hex": "#bd5bd3"}],
         "sizes": ["One size"],
         "badge": "New",
-        "stock": 8,
         "image": "https://images.unsplash.com/photo-1571139627661-cf707929f465?w=900&h=900&fit=crop&crop=entropy&q=80&auto=format&fm=jpg",
     },
 ]
@@ -113,8 +105,8 @@ def seed():
     init_db()
     with get_connection() as connection:
         connection.cursor().executemany(
-            "INSERT INTO products (id, title, category, price, description, colors, sizes, badge, stock, image, images) "
-            "VALUES (%(id)s, %(title)s, %(category)s, %(price)s, %(description)s, %(colors)s, %(sizes)s, %(badge)s, %(stock)s, %(image)s, %(images)s) "
+            "INSERT INTO products (id, title, category, price, description, colors, sizes, badge, image, images) "
+            "VALUES (%(id)s, %(title)s, %(category)s, %(price)s, %(description)s, %(colors)s, %(sizes)s, %(badge)s, %(image)s, %(images)s) "
             "ON CONFLICT (id) DO NOTHING",
             [
                 {
