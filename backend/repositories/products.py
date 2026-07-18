@@ -3,7 +3,7 @@ import json
 from database.connection import get_connection
 from backend.repositories.base import unique_id
 
-COLUMNS = ("id", "title", "category", "price", "description", "colors", "sizes", "badge", "stock", "image", "images")
+COLUMNS = ("id", "title", "category", "price", "description", "colors", "sizes", "badge", "image", "images")
 
 
 class ProductRepository:
@@ -31,20 +31,6 @@ class ProductRepository:
         with get_connection() as connection:
             connection.execute("DELETE FROM products WHERE id = %s", (product_id,))
 
-    def decrement_stock(self, product_id: str, quantity: int, connection=None) -> bool:
-        """Atomically reduce stock if enough remains. Returns False if not enough stock was left."""
-        def run(conn):
-            cursor = conn.execute(
-                "UPDATE products SET stock = stock - %s WHERE id = %s AND stock >= %s",
-                (quantity, product_id, quantity),
-            )
-            return cursor.rowcount > 0
-
-        if connection is not None:
-            return run(connection)
-        with get_connection() as connection:
-            return run(connection)
-
     def save(self, product, product_id=None):
         with get_connection() as connection:
             final_id = product_id or product.id or unique_id(connection, "products", product.title, "product")
@@ -61,7 +47,6 @@ class ProductRepository:
                 "colors": json.dumps([color.model_dump() for color in product.colors]),
                 "sizes": json.dumps(product.sizes),
                 "badge": product.badge,
-                "stock": product.stock,
                 "image": cover,
                 "images": json.dumps(images),
             }

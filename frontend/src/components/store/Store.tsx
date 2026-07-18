@@ -5,7 +5,7 @@ import { useCart } from "@/context/CartContext";
 import { formatPrice } from "@/lib/format";
 import ScrollReveal, { useMobileMotion, useScrollReveal } from "@/components/shared/ScrollReveal";
 import { swatchStyle } from "@/components/shared/swatchStyle";
-import { isLowStock, type Product } from "@/models/product";
+import type { Product } from "@/models/product";
 import StoreScene from "./StoreScene";
 
 function useColumnCount(): number {
@@ -72,7 +72,6 @@ function ProductCard({ product, index, columns, onSelect, stagger }: ProductCard
   const reduceMotion = useReducedMotion();
   const mobile = useMobileMotion();
   const tiltEnabled = !reduceMotion && !mobile;
-  const lowStock = isLowStock(product.stock);
   const baseOffset = stagger ? 28 : 0;
 
   const column = index % columns;
@@ -165,7 +164,6 @@ function ProductCard({ product, index, columns, onSelect, stagger }: ProductCard
           </div>
         )}
         {product.badge && <span className="absolute top-3 left-3 rounded-full border border-ink/15 bg-cream px-2 py-1 text-[0.68rem] font-extrabold">{product.badge}</span>}
-        {lowStock && <span className="absolute top-3 right-3 rounded-full border border-ink/15 bg-[#fff3d6] px-2 py-1 text-[0.68rem] font-extrabold">{product.stock} left</span>}
         <motion.button
           type="button"
           className="pointer-events-auto absolute right-3 bottom-3 z-10 grid size-10 cursor-pointer place-items-center rounded-full border border-ink/15 bg-cream text-ink shadow-[0_6px_16px_rgba(61,48,70,.16)] transition-colors hover:bg-rose hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink"

@@ -12,7 +12,6 @@ class ProductPayload(StrippedModel):
     colors: list[ProjectColor] = Field(min_length=1)
     sizes: list[str] = Field(min_length=1)
     badge: str = Field(default="", max_length=40)
-    stock: int = Field(ge=0, le=100000)
     image: str = Field(default="", max_length=300)
     images: list[str] = Field(default_factory=list)
 

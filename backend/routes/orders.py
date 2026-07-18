@@ -13,7 +13,7 @@ from backend.models.orders import OrderPayload
 from backend.services.email import send_order_email
 from backend.services.payments import call_stripe, call_vipps, validate_and_price
 from backend.services.security import check_rate_limit, client_key
-from backend.repositories import order_repository, product_repository
+from backend.repositories import order_repository
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -50,7 +50,7 @@ def _verify_payment(payment_method: str, payment_reference: str, subtotal: int) 
 @router.post("/api/orders", status_code=201)
 def create_order(order: OrderPayload, request: Request = None):
     check_rate_limit("order", client_key(request), 5, 10 * 60)
-    subtotal, quantities = validate_and_price(order.items)
+    subtotal = validate_and_price(order.items)
     _verify_payment(order.payment_method, order.payment_reference, subtotal)
 
     order_id = f"OK-{datetime.now(UTC).strftime('%y%m%d')}-{secrets.token_hex(3).upper()}"
@@ -67,12 +67,6 @@ def create_order(order: OrderPayload, request: Request = None):
                 created_at,
                 connection=connection,
             )
-            for item_id, quantity in quantities.items():
-                if not product_repository.decrement_stock(item_id, quantity, connection=connection):
-                    logger.error(
-                        "Stock oversold for product %s on order %s: needed %s more than available",
-                        item_id, order_id, quantity,
-                    )
     except psycopg.errors.UniqueViolation:
         raise HTTPException(status_code=409, detail="This payment has already been used for an order")
     try:

@@ -9,13 +9,6 @@ export interface Product {
   colors: ColorSwatch[];
   sizes: string[];
   badge: string;
-  stock: number;
   image: string;
   images: string[];
-}
-
-export const LOW_STOCK_THRESHOLD = 3;
-
-export function isLowStock(stock: number): boolean {
-  return typeof stock === "number" && stock <= LOW_STOCK_THRESHOLD;
 }

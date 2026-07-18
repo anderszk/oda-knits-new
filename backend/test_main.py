@@ -178,7 +178,6 @@ class ContactTest(unittest.TestCase):
             "description": "A cozy hand-knit sweater used for backend test coverage.",
             "colors": [{"name": "Cream", "hex": "#FFFFFF"}],
             "sizes": ["S", "M"],
-            "stock": 5,
         }
         payload.update(overrides)
         return product_repository.save(ProductPayload(**payload))
@@ -302,7 +301,6 @@ class ContactTest(unittest.TestCase):
             description="A warm sweater used for admin CRUD test coverage.",
             colors=[{"name": "Cream", "hex": "#FFFFFF"}],
             sizes=["S", "M"],
-            stock=3,
         ))
         product_id = created["id"]
         self.assertTrue(created["ok"])
@@ -315,7 +313,6 @@ class ContactTest(unittest.TestCase):
             description="An updated warm sweater used for admin CRUD test coverage.",
             colors=[{"name": "Cream", "hex": "#FFFFFF"}],
             sizes=["S", "M", "L"],
-            stock=4,
         ))
         updated = next(p for p in product_repository.list() if p["id"] == product_id)
         self.assertEqual(updated["title"], "Updated Sweater")

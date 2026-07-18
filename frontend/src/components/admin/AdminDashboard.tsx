@@ -33,7 +33,6 @@ interface ProductFormState {
   colors: ColorSwatch[];
   sizes: string[];
   badge: string;
-  stock: string | number;
   image: string;
   images: string[];
 }
@@ -75,7 +74,6 @@ const blankProduct: ProductFormState = {
   colors: [{ name: "Petal", hex: "#bd5bd3" }],
   sizes: ["One size"],
   badge: "",
-  stock: "",
   image: "",
   images: [],
 };
@@ -139,7 +137,6 @@ function validateProduct(product: ProductFormState): string {
   const missing = required.find(([, value]) => !String(value || "").trim());
   if (missing) return `${missing[0]} is required.`;
   if (product.price === "" || Number(product.price) < 0) return "Price is required.";
-  if (product.stock === "" || Number(product.stock) < 0) return "Stock is required.";
   if (!product.colors?.length) return "At least one color is required.";
   if (product.colors.some((color) => !color.name.trim())) return "Every color needs a name.";
   if (!product.sizes?.length) return "At least one size is required.";
@@ -344,7 +341,7 @@ export default function AdminDashboard() {
       setError(validationError);
       return;
     }
-    const payload = { ...productForm, price: Number(productForm.price), stock: Number(productForm.stock) };
+    const payload = { ...productForm, price: Number(productForm.price) };
     await adminApiClient.saveProduct(payload, isEditingProduct ? editingProductId : undefined);
     setMessage(isEditingProduct ? "Product updated." : "Product created.");
     setEditingProductId("");
@@ -506,7 +503,6 @@ export default function AdminDashboard() {
             <TextField label="Product title" required value={productForm.title} onChange={(event) => updateProductField("title", event.target.value)} />
             <TextField label="Category" required value={productForm.category} onChange={(event) => updateProductField("category", event.target.value)} />
             <TextField label="Price (kr)" type="number" min="0" required value={productForm.price} onChange={(event) => updateProductField("price", event.target.value)} />
-            <TextField label="Stock" type="number" min="0" required value={productForm.stock} onChange={(event) => updateProductField("stock", event.target.value)} />
             <TextField label="Badge (optional)" value={productForm.badge} onChange={(event) => updateProductField("badge", event.target.value)} />
             <TextField label="Sizes (comma separated)" required value={productForm.sizes.join(", ")} onChange={(event) => updateProductField("sizes", event.target.value.split(",").map((size) => size.trim()).filter(Boolean))} />
           </div>

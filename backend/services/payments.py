@@ -24,27 +24,19 @@ from backend.repositories import product_repository
 vipps_token_cache = {"expires_at": 0.0, "token": ""}
 
 
-def validate_and_price(items: list[OrderItem]) -> tuple[int, dict[str, int]]:
-    """Revalidate items against the current catalog (price/size/stock) and price them server-side.
-
-    Returns the subtotal plus quantity requested per product id, since callers that go on to
-    create an order need the aggregated quantity to decrement stock.
-    """
+def validate_and_price(items: list[OrderItem]) -> int:
+    """Revalidate items against the current catalog (price/size) and price them server-side."""
     catalog = {product["id"]: product for product in product_repository.list()}
-    quantities: dict[str, int] = {}
     for item in items:
         product = catalog.get(item.id)
         if not product or item.price != product["price"] or item.size not in product["sizes"]:
             raise HTTPException(status_code=400, detail="One of the items in your basket is no longer available")
-        quantities[item.id] = quantities.get(item.id, 0) + item.quantity
-        if quantities[item.id] > product["stock"]:
-            raise HTTPException(status_code=400, detail="One of the items in your basket is no longer available")
     subtotal = sum(item.price * item.quantity for item in items)
-    return subtotal, quantities
+    return subtotal
 
 
 def revalidated_subtotal(items: list[OrderItem]) -> int:
-    subtotal, _ = validate_and_price(items)
+    subtotal = validate_and_price(items)
     if subtotal <= 0:
         raise HTTPException(status_code=400, detail="Your basket is empty")
     return subtotal
