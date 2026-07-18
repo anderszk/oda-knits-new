@@ -11,6 +11,7 @@ dependencies = [
     "email-validator==2.2.0",
     "python-multipart==0.0.20",
     "uvicorn[standard]==0.34.0",
+    "psycopg[binary]==3.2.*",
 ]
 
 [dependency-groups]
@@ -20,7 +21,7 @@ dev = ["pytest", "httpx"]
 include = ["backend*", "database*"]
 
 [tool.setuptools.package-data]
-database = ["*.sql"]
+database = ["*.sql", "migrations/*.sql"]
 
 [tool.pytest.ini_options]
 testpaths = ["backend"]

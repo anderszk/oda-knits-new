@@ -32,17 +32,17 @@ class ProjectRepository:
 
     def exists(self, project_id: str) -> bool:
         with get_connection() as connection:
-            return connection.execute("SELECT 1 FROM projects WHERE id = ?", (project_id,)).fetchone() is not None
+            return connection.execute("SELECT 1 FROM projects WHERE id = %s", (project_id,)).fetchone() is not None
 
     def delete(self, project_id: str):
         with get_connection() as connection:
-            connection.execute("DELETE FROM projects WHERE id = ?", (project_id,))
+            connection.execute("DELETE FROM projects WHERE id = %s", (project_id,))
 
     def save(self, project, project_id=None):
         with get_connection() as connection:
             now = datetime.now(UTC).isoformat()
             existing = connection.execute(
-                "SELECT created_at FROM projects WHERE id = ?", (project_id or project.id,)
+                "SELECT created_at FROM projects WHERE id = %s", (project_id or project.id,)
             ).fetchone()
             final_id = project_id or project.id or unique_id(connection, "projects", project.title, "project")
             images = [image for image in project.images if image]
@@ -69,9 +69,11 @@ class ProjectRepository:
                 "created_at": existing[0] if existing else now,
                 "updated_at": now,
             }
-            placeholders = ", ".join(["?"] * len(self.columns))
+            placeholders = ", ".join(["%s"] * len(self.columns))
+            updates = ", ".join(f"{column} = EXCLUDED.{column}" for column in self.columns if column != "id")
             connection.execute(
-                f"INSERT OR REPLACE INTO projects ({', '.join(self.columns)}) VALUES ({placeholders})",
+                f"INSERT INTO projects ({', '.join(self.columns)}) VALUES ({placeholders}) "
+                f"ON CONFLICT (id) DO UPDATE SET {updates}",
                 tuple(values[column] for column in self.columns),
             )
         return values

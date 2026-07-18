@@ -11,3 +11,4 @@ build/
 *.egg-info/
 docs/codebase-audit.md
 docs/fix-progress.md
+scripts/migrate_sqlite_to_postgres.py

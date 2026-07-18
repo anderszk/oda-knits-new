@@ -2,8 +2,8 @@ import re
 import secrets
 
 _EXISTS_QUERY_BY_TABLE = {
-    "products": "SELECT 1 FROM products WHERE id = ?",
-    "projects": "SELECT 1 FROM projects WHERE id = ?",
+    "products": "SELECT 1 FROM products WHERE id = %s",
+    "projects": "SELECT 1 FROM projects WHERE id = %s",
 }
 
 

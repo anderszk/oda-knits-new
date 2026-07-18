@@ -7,10 +7,11 @@ class ContactMessageRepository:
     def create(self, name, email, message, created_at) -> int:
         with get_connection() as connection:
             cursor = connection.execute(
-                "INSERT INTO contact_messages (name, email, message, created_at) VALUES (?, ?, ?, ?)",
+                "INSERT INTO contact_messages (name, email, message, created_at) VALUES (%s, %s, %s, %s) "
+                "RETURNING id",
                 (name, email, message, created_at),
             )
-            return cursor.lastrowid
+            return cursor.fetchone()[0]
 
 
 contact_message_repository = ContactMessageRepository()

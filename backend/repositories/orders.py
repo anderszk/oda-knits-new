@@ -8,7 +8,7 @@ class OrderRepository:
         def run(conn):
             conn.execute(
                 "INSERT INTO orders (id, items, subtotal, shipping, payment_method, payment_reference, created_at) "
-                "VALUES (?, ?, ?, ?, ?, ?, ?)",
+                "VALUES (%s, %s, %s, %s, %s, %s, %s)",
                 (order_id, items, subtotal, shipping, payment_method, payment_reference, created_at),
             )
 

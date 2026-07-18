@@ -1,7 +1,7 @@
 import logging
-import sqlite3
 from contextlib import asynccontextmanager
 
+import psycopg
 from fastapi import FastAPI, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
@@ -9,7 +9,7 @@ from fastapi.staticfiles import StaticFiles
 
 from backend.config import ALLOWED_ORIGINS, UPLOAD_DIR
 from backend.routes import admin, contact, instagram, orders, payments
-from database.migrations import init_db
+from database.migrate import init_db
 from backend.repositories import content_repository, product_repository, project_repository
 
 logger = logging.getLogger(__name__)
@@ -36,8 +36,8 @@ app.add_middleware(
 )
 
 
-@app.exception_handler(sqlite3.OperationalError)
-async def handle_sqlite_operational_error(request: Request, exc: sqlite3.OperationalError):
+@app.exception_handler(psycopg.OperationalError)
+async def handle_database_operational_error(request: Request, exc: psycopg.OperationalError):
     return JSONResponse(
         status_code=503,
         content={"detail": "The database is temporarily unavailable. Please try again."},
