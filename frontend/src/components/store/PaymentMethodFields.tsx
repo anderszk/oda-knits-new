@@ -23,14 +23,36 @@ interface PaymentMethodFieldsProps {
   placeOrder: (paymentMethod: string, paymentReference: string) => void;
   onBack: () => void;
   summary?: ReactNode;
+  failedPayment?: boolean;
+  retryOrderConfirmation?: () => void;
 }
 
 export default function PaymentMethodFields({
   items, subtotal, providers, submitting, error,
   payWithKlarna, payWithVipps, placeOrder, onBack,
-  summary,
+  summary, failedPayment = false, retryOrderConfirmation,
 }: PaymentMethodFieldsProps) {
   const hasExpressOptions = providers.applePay || providers.klarna || providers.vipps;
+
+  // A payment was already captured by the provider but order creation failed to
+  // confirm it — showing the payment methods again would let the customer pay a
+  // second time. Retrying only re-submits the same already-paid order.
+  if (failedPayment) {
+    return (
+      <>
+        {error && <p className="mb-4 rounded-md bg-[#ffe3e3] px-3 py-2 text-sm font-bold text-wine">{error}</p>}
+        <button
+          type="button"
+          className="inline-flex min-h-12 w-full cursor-pointer items-center justify-center rounded-full border border-ink bg-ink px-5 py-3 font-extrabold text-cream transition hover:-translate-y-0.5 hover:bg-rose hover:text-ink disabled:pointer-events-none disabled:cursor-wait disabled:opacity-60"
+          onClick={retryOrderConfirmation}
+          disabled={submitting}
+        >
+          {submitting ? "Retrying…" : "Retry placing your order"}
+        </button>
+        {summary}
+      </>
+    );
+  }
 
   return (
     <>

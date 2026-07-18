@@ -46,6 +46,7 @@ services:
         condition: service_healthy
     environment:
       DATABASE_URL: postgresql://odaknits:${POSTGRES_PASSWORD}@postgres:5432/odaknits
+      UPLOAD_DIR: /data
       ADMIN_USERNAME: odaknits
       ADMIN_PASSWORD: ${ADMIN_PASSWORD:-}
       ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-}

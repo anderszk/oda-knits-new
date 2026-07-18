@@ -67,6 +67,7 @@ export function useCheckout() {
   const [order, setOrder] = useState<OrderResponse | null>(null);
   const [realPayment, setRealPayment] = useState("");
   const [providers, setProviders] = useState<PaymentProviders>({ card: false, applePay: false, klarna: false, vipps: false });
+  const [failedPayment, setFailedPayment] = useState<{ paymentMethod: string; payload: CreateOrderRequest } | null>(null);
 
   useEffect(() => {
     loadPaymentsConfig().then(setProviders);
@@ -78,17 +79,13 @@ export function useCheckout() {
 
   const orderItems = (): OrderItemPayload[] => items.map((line) => ({ id: line.id, title: line.title, price: line.price, size: line.size, quantity: line.quantity }));
 
-  const placeOrder = async (paymentMethod: string, paymentReference: string) => {
+  // Shared by placeOrder and retryOrderConfirmation so a retry after a captured-but-
+  // unconfirmed payment resubmits the EXACT same payload rather than re-reading live
+  // cart/shipping state, and never re-runs the actual charge.
+  const submitOrder = async (paymentMethod: string, payload: CreateOrderRequest) => {
     setSubmitting(true);
     setError("");
     try {
-      const payload: CreateOrderRequest = {
-        items: orderItems(),
-        shipping: toShippingPayload(shipping),
-        payment_method: paymentMethod,
-        payment_reference: paymentReference,
-        website: "",
-      };
       const result = await apiClient.request<OrderResponse>("/api/orders", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -97,12 +94,34 @@ export function useCheckout() {
       setOrder(result);
       setRealPayment(paymentMethod);
       setStep("success");
+      setFailedPayment(null);
       clear();
     } catch {
-      setError("Something went wrong placing your order. Please try again.");
+      // The caller only reaches here after a payment provider already captured funds
+      // (card/Apple Pay confirm, or a verified Klarna/Vipps redirect) — the charge is
+      // real. Keep the payload so retrying re-sends this exact order instead of paying
+      // again; the backend's payment_reference uniqueness makes the retry idempotent.
+      setFailedPayment({ paymentMethod, payload });
+      setError("Your payment went through, but we couldn't finish placing your order. Press retry — you will not be charged again.");
     } finally {
       setSubmitting(false);
     }
+  };
+
+  const placeOrder = (paymentMethod: string, paymentReference: string) => {
+    const payload: CreateOrderRequest = {
+      items: orderItems(),
+      shipping: toShippingPayload(shipping),
+      payment_method: paymentMethod,
+      payment_reference: paymentReference,
+      website: "",
+    };
+    return submitOrder(paymentMethod, payload);
+  };
+
+  const retryOrderConfirmation = () => {
+    if (!failedPayment) return Promise.resolve();
+    return submitOrder(failedPayment.paymentMethod, failedPayment.payload);
   };
 
   const payWithKlarna = async () => {
@@ -234,5 +253,6 @@ export function useCheckout() {
     shipping, updateShipping, shippingValid,
     submitting, error, order, placeOrder,
     payWithKlarna, payWithVipps, providers, realPayment,
+    failedPayment: failedPayment !== null, retryOrderConfirmation,
   };
 }
