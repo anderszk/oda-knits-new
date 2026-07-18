@@ -139,7 +139,7 @@ class ContactTest(unittest.TestCase):
         )
 
         with patch("backend.routes.contact.send_contact_email"):
-            for _ in range(3):
+            for _ in range(10):
                 contact(message)
             with self.assertRaises(HTTPException) as caught:
                 contact(message)
