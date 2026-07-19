@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { useCallback, type ReactNode } from "react";
 import ApplePayButton from "./ApplePayButton";
 import CardPaymentField from "./CardPaymentField";
 import klarnaBadge from "@/img/payment-logos/klarna-badge.svg";
@@ -34,6 +34,12 @@ export default function PaymentMethodFields({
 }: PaymentMethodFieldsProps) {
   const hasExpressOptions = providers.applePay || providers.klarna || providers.vipps;
 
+  // Stable identity so ApplePayButton's mount effect (keyed on this callback) doesn't
+  // tear down and rebuild the live Apple Pay Payment Request Button on every
+  // unrelated re-render — placeOrder itself is already stable (see useCheckout.ts).
+  const onApplePayPaid = useCallback((reference: string) => placeOrder("Apple Pay", reference), [placeOrder]);
+  const onCardPaid = useCallback((reference: string) => placeOrder("Card", reference), [placeOrder]);
+
   // A payment was already captured by the provider but order creation failed to
   // confirm it — showing the payment methods again would let the customer pay a
   // second time. Retrying only re-submits the same already-paid order.
@@ -59,7 +65,7 @@ export default function PaymentMethodFields({
       {hasExpressOptions && (
         <div className="mb-6 grid gap-2">
           {providers.applePay && (
-            <ApplePayButton items={items} subtotal={subtotal} onPaid={(reference) => placeOrder("Apple Pay", reference)} />
+            <ApplePayButton items={items} subtotal={subtotal} onPaid={onApplePayPaid} />
           )}
           {providers.klarna && (
             <button
@@ -93,7 +99,7 @@ export default function PaymentMethodFields({
         </div>
       )}
       {providers.card && (
-        <CardPaymentField items={items} subtotal={subtotal} onPaid={(reference) => placeOrder("Card", reference)} />
+        <CardPaymentField items={items} subtotal={subtotal} onPaid={onCardPaid} />
       )}
       {error && <p className="mt-4 rounded-md bg-[#ffe3e3] px-3 py-2 text-sm font-bold text-wine">{error}</p>}
       {summary}

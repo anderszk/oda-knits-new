@@ -520,7 +520,7 @@ export default function AdminDashboard() {
               <p className="mb-2 text-xs font-extrabold uppercase text-wine">{isEditingProduct ? "Editing product" : "New product"}</p>
               <h2 className="font-display text-5xl leading-none max-[620px]:text-4xl max-[380px]:text-3xl">{productForm.title || "Untitled piece"}</h2>
             </div>
-            {isEditingProduct && <button className={`${buttonClass} border border-wine bg-white px-3 py-2 font-bold text-wine hover:bg-wine hover:text-white`} onClick={() => removeProduct(editingProductId)} type="button">Delete</button>}
+            {isEditingProduct && <button className={`${buttonClass} border border-wine bg-white px-3 py-2 font-bold text-wine hover:bg-wine hover:text-white`} onClick={() => window.confirm(`Delete "${productForm.title || "this product"}"? This can't be undone.`) && removeProduct(editingProductId)} type="button">Delete</button>}
           </div>
 
           {(message || error) && <p className={`rounded-md px-3 py-2 text-sm font-bold ${error ? "bg-[#ffe3e3] text-wine" : "bg-mint text-ink"}`}>{error || message}</p>}
@@ -597,7 +597,7 @@ export default function AdminDashboard() {
               <p className="mb-2 text-xs font-extrabold uppercase text-wine">{isEditing ? "Editing project" : "New project"}</p>
               <h2 className="font-display text-5xl leading-none max-[620px]:text-4xl max-[380px]:text-3xl">{form.title || "Untitled knit"}</h2>
             </div>
-            {isEditing && <button className={`${buttonClass} border border-wine bg-white px-3 py-2 font-bold text-wine hover:bg-wine hover:text-white`} onClick={() => removeProject(editingId)} type="button">Delete</button>}
+            {isEditing && <button className={`${buttonClass} border border-wine bg-white px-3 py-2 font-bold text-wine hover:bg-wine hover:text-white`} onClick={() => window.confirm(`Delete "${form.title || "this project"}"? This can't be undone.`) && removeProject(editingId)} type="button">Delete</button>}
           </div>
 
           {(message || error) && <p className={`rounded-md px-3 py-2 text-sm font-bold ${error ? "bg-[#ffe3e3] text-wine" : "bg-mint text-ink"}`}>{error || message}</p>}

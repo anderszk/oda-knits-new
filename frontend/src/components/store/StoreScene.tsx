@@ -142,6 +142,7 @@ export default function StoreScene() {
     };
 
     let frame: number;
+    let visible = true;
     const clock = new THREE.Clock();
     const animate = () => {
       const time = clock.getElapsedTime();
@@ -154,12 +155,20 @@ export default function StoreScene() {
         mesh.rotation.y = time * 0.15 + bob;
       });
       renderer.render(scene, camera);
-      frame = requestAnimationFrame(animate);
+      if (visible) frame = requestAnimationFrame(animate);
     };
 
     host.appendChild(renderer.domElement);
     const observer = new ResizeObserver(resize);
     observer.observe(host);
+    // Decorative and continuous — no reason to keep rendering every frame while
+    // scrolled offscreen.
+    const visibilityObserver = new IntersectionObserver(([entry]) => {
+      const wasVisible = visible;
+      visible = entry.isIntersecting;
+      if (visible && !wasVisible) animate();
+    });
+    visibilityObserver.observe(host);
     host.addEventListener("pointerenter", enter);
     host.addEventListener("pointerleave", leave);
     host.addEventListener("pointermove", move);
@@ -171,6 +180,7 @@ export default function StoreScene() {
     return () => {
       cancelAnimationFrame(frame);
       observer.disconnect();
+      visibilityObserver.disconnect();
       host.removeEventListener("pointerenter", enter);
       host.removeEventListener("pointerleave", leave);
       host.removeEventListener("pointermove", move);

@@ -243,6 +243,7 @@ export default function AboutCharmScene() {
     host.addEventListener("pointerdown", click);
 
     let frame: number;
+    let visible = true;
     const clock = new THREE.Clock();
     const animate = () => {
       const time = clock.getElapsedTime();
@@ -284,14 +285,23 @@ export default function AboutCharmScene() {
         -0.28 + (pointer.inside && !greeting ? pointer.x * 0.08 : 0);
       leftArm.rotation.x = 0;
       renderer.render(scene, camera);
-      frame = requestAnimationFrame(animate);
+      if (visible) frame = requestAnimationFrame(animate);
     };
+    // Decorative and continuous — no reason to keep rendering every frame while
+    // scrolled offscreen.
+    const visibilityObserver = new IntersectionObserver(([entry]) => {
+      const wasVisible = visible;
+      visible = entry.isIntersecting;
+      if (visible && !wasVisible) animate();
+    });
+    visibilityObserver.observe(host);
     resize();
     animate();
 
     return () => {
       cancelAnimationFrame(frame);
       observer.disconnect();
+      visibilityObserver.disconnect();
       trackTarget.removeEventListener("pointerenter", enter);
       trackTarget.removeEventListener("pointerleave", leave);
       trackTarget.removeEventListener("pointermove", move);

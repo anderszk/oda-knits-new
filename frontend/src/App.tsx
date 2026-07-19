@@ -1,10 +1,7 @@
-import { useCallback, useState } from "react";
+import { lazy, Suspense, useCallback, useState } from "react";
 import { AnimatePresence } from "framer-motion";
 import About from "./components/about/About";
-import AdminDashboard from "./components/admin/AdminDashboard";
 import CartDrawer from "./components/store/CartDrawer";
-import CheckoutModal from "./components/store/CheckoutModal";
-import CheckoutPage from "./components/store/CheckoutPage";
 import Contact from "./components/contact/Contact";
 import Hero from "./components/home/Hero";
 import InstagramCarousel from "./components/home/InstagramCarousel";
@@ -20,16 +17,38 @@ import { isDesktopViewport } from "./lib/viewport";
 import type { Product } from "./models/product";
 import type { Project } from "./models/project";
 
+// Lazy-loaded: each pulls in a chunk of weight (Stripe, or the full admin CRUD UI)
+// that a first-time visitor to the homepage never needs.
+const AdminDashboard = lazy(() => import("./components/admin/AdminDashboard"));
+const CheckoutPage = lazy(() => import("./components/store/CheckoutPage"));
+const CheckoutModal = lazy(() => import("./components/store/CheckoutModal"));
+
+function PageFallback() {
+  return (
+    <div className="grid min-h-screen place-items-center bg-cream text-ink">
+      <span className="font-display text-3xl text-star" aria-hidden="true">*</span>
+    </div>
+  );
+}
+
 export default function App() {
   const { pathname, navigate } = useRouter();
 
-  if (pathname.startsWith("/admin")) return <AdminDashboard />;
+  if (pathname.startsWith("/admin")) {
+    return (
+      <Suspense fallback={<PageFallback />}>
+        <AdminDashboard />
+      </Suspense>
+    );
+  }
 
   return (
     <CartProvider>
       <SiteDataProvider>
         {pathname.startsWith("/checkout") ? (
-          <CheckoutPage onNavigateHome={() => navigate("/")} />
+          <Suspense fallback={<PageFallback />}>
+            <CheckoutPage onNavigateHome={() => navigate("/")} />
+          </Suspense>
         ) : (
           <PublicSite pathname={pathname} navigate={navigate} />
         )}
@@ -120,7 +139,11 @@ function PublicSite({
       </AnimatePresence>
       <CartDrawer onCheckout={goToCheckout} />
       <AnimatePresence>
-        {checkoutOpen && <CheckoutModal onClose={closeCheckout} />}
+        {checkoutOpen && (
+          <Suspense fallback={null}>
+            <CheckoutModal onClose={closeCheckout} />
+          </Suspense>
+        )}
       </AnimatePresence>
     </>
   );
