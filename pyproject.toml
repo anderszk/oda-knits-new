@@ -12,6 +12,7 @@ dependencies = [
     "python-multipart==0.0.20",
     "uvicorn[standard]==0.34.0",
     "psycopg[binary]==3.2.*",
+    "psycopg-pool==3.3.*",
 ]
 
 [dependency-groups]

@@ -4,6 +4,8 @@ from pathlib import Path
 UPLOAD_DIR = Path(os.getenv("UPLOAD_DIR", "backend/uploads"))
 UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
 
+LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO")
+
 _DEV_ORIGINS = [
     "http://localhost:5173",
     "http://127.0.0.1:5173",

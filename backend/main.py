@@ -7,11 +7,13 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 
-from backend.config import ALLOWED_ORIGINS, UPLOAD_DIR
+from backend.config import ALLOWED_ORIGINS, LOG_LEVEL, UPLOAD_DIR
 from backend.routes import admin, contact, instagram, orders, payments
+from database.connection import get_connection
 from database.migrate import init_db
 from backend.repositories import content_repository, product_repository, project_repository
 
+logging.basicConfig(level=LOG_LEVEL, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
 logger = logging.getLogger(__name__)
 
 init_db()
@@ -67,6 +69,13 @@ app.include_router(payments.router)
 app.include_router(instagram.router)
 app.include_router(admin.router)
 app.include_router(contact.router)
+
+
+@app.get("/api/health")
+def health_check():
+    with get_connection() as connection:
+        connection.execute("SELECT 1")
+    return {"status": "ok"}
 
 
 @app.get("/api/work")
