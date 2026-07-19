@@ -18,8 +18,7 @@ def init_db():
         if version in applied:
             continue
         with get_connection() as connection:
-            for statement in path.read_text().split(";"):
-                statement = statement.strip()
-                if statement:
-                    connection.execute(statement)
+            sql = path.read_text().strip()
+            if sql:
+                connection.execute(sql)
             connection.execute("INSERT INTO schema_migrations (version) VALUES (%s)", (version,))

@@ -8,6 +8,21 @@ import { swatchStyle } from "@/components/shared/swatchStyle";
 import type { Product } from "@/models/product";
 import StoreScene from "./StoreScene";
 
+// Matches the `max-[900px]:hidden` breakpoint StoreScene's wrapper already used —
+// mirrored here so the scene isn't mounted (and its WebGL rAF loop isn't running)
+// on mobile at all, instead of just being CSS-hidden while still rendering offscreen.
+function useShowStoreScene(): boolean {
+  const [show, setShow] = useState(true);
+  useEffect(() => {
+    const query = window.matchMedia("(min-width: 901px)");
+    const update = () => setShow(query.matches);
+    update();
+    query.addEventListener("change", update);
+    return () => query.removeEventListener("change", update);
+  }, []);
+  return show;
+}
+
 function useColumnCount(): number {
   const [columns, setColumns] = useState(4);
   useEffect(() => {
@@ -37,6 +52,7 @@ interface StoreProps {
 export default function Store({ products, onSelect }: StoreProps) {
   const columns = useColumnCount();
   const singleColumn = columns === 1;
+  const showStoreScene = useShowStoreScene();
   return (
     <section className="bg-flax px-[clamp(1rem,4vw,4rem)] py-24 max-[620px]:px-4 max-[620px]:py-16" id="store">
       <div className="grid grid-cols-[1.1fr_1fr] items-start gap-8 max-[900px]:grid-cols-1 max-[900px]:mb-10">
@@ -45,9 +61,11 @@ export default function Store({ products, onSelect }: StoreProps) {
           <h2 className="m-0 font-display text-[4.2rem] leading-[0.96] max-[900px]:text-5xl max-[620px]:text-[2.5rem] max-[380px]:text-[2.25rem]">Take a piece home</h2>
           <p className="mt-4 max-w-md leading-relaxed text-[#6f6674]">Small batch knits, ready to ship. Pick a size, add to your basket, and check out in a minute.</p>
         </ScrollReveal>
-        <div className="-mt-20 h-[26rem] max-[1050px]:-mt-10 max-[1050px]:h-[20rem] max-[900px]:hidden">
-          <StoreScene />
-        </div>
+        {showStoreScene && (
+          <div className="-mt-20 h-[26rem] max-[1050px]:-mt-10 max-[1050px]:h-[20rem]">
+            <StoreScene />
+          </div>
+        )}
       </div>
       <div className="grid grid-cols-4 gap-x-5 gap-y-12 -mt-12 max-[1100px]:grid-cols-3 max-[900px]:mt-0 max-[750px]:grid-cols-2 max-[460px]:grid-cols-1 max-[460px]:gap-y-5">
         {products.map((product, index) => (

@@ -17,6 +17,7 @@ export default function CheckoutModal({ onClose }: CheckoutModalProps) {
     shipping, updateShipping, shippingValid,
     submitting, error, order, placeOrder,
     payWithKlarna, payWithVipps, providers, realPayment,
+    failedPayment, retryOrderConfirmation,
   } = useCheckout();
 
   const finish = () => {
@@ -110,6 +111,8 @@ export default function CheckoutModal({ onClose }: CheckoutModalProps) {
                   payWithVipps={payWithVipps}
                   placeOrder={placeOrder}
                   onBack={() => setStep("shipping")}
+                  failedPayment={failedPayment}
+                  retryOrderConfirmation={retryOrderConfirmation}
                   summary={
                     <div className="mt-6 flex items-center justify-between text-lg">
                       <span className="font-bold">Total</span>

@@ -295,19 +295,28 @@ export default function AdminDashboard() {
       setError(validationError);
       return;
     }
-    await adminApiClient.saveProject(form, isEditing ? editingId : undefined);
-    setMessage(isEditing ? "Project updated." : "Project created.");
-    setEditingId("");
-    setForm(blankProject);
-    await loadProjects();
+    try {
+      await adminApiClient.saveProject(form, isEditing ? editingId : undefined);
+      setMessage(isEditing ? "Project updated." : "Project created.");
+      setEditingId("");
+      setForm(blankProject);
+      await loadProjects();
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Couldn't save the project.");
+    }
   }
 
   async function removeProject(id: string) {
-    await adminApiClient.deleteProject(id);
-    setProjects((current) => current.filter((project) => project.id !== id));
-    if (editingId === id) {
-      setEditingId("");
-      setForm(blankProject);
+    setError("");
+    try {
+      await adminApiClient.deleteProject(id);
+      setProjects((current) => current.filter((project) => project.id !== id));
+      if (editingId === id) {
+        setEditingId("");
+        setForm(blankProject);
+      }
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Couldn't delete the project.");
     }
   }
 
@@ -341,35 +350,52 @@ export default function AdminDashboard() {
       setError(validationError);
       return;
     }
-    const payload = { ...productForm, price: Number(productForm.price) };
-    await adminApiClient.saveProduct(payload, isEditingProduct ? editingProductId : undefined);
-    setMessage(isEditingProduct ? "Product updated." : "Product created.");
-    setEditingProductId("");
-    setProductForm(blankProduct);
-    await loadProducts();
+    try {
+      const payload = { ...productForm, price: Number(productForm.price) };
+      await adminApiClient.saveProduct(payload, isEditingProduct ? editingProductId : undefined);
+      setMessage(isEditingProduct ? "Product updated." : "Product created.");
+      setEditingProductId("");
+      setProductForm(blankProduct);
+      await loadProducts();
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Couldn't save the product.");
+    }
   }
 
   async function removeProduct(id: string) {
-    await adminApiClient.deleteProduct(id);
-    setProducts((current) => current.filter((product) => product.id !== id));
-    if (editingProductId === id) {
-      setEditingProductId("");
-      setProductForm(blankProduct);
+    setError("");
+    try {
+      await adminApiClient.deleteProduct(id);
+      setProducts((current) => current.filter((product) => product.id !== id));
+      if (editingProductId === id) {
+        setEditingProductId("");
+        setProductForm(blankProduct);
+      }
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Couldn't delete the product.");
     }
   }
 
   async function saveAbout(event: FormEvent) {
     event.preventDefault();
     setError("");
-    await adminApiClient.saveAbout(aboutForm);
-    setMessage("About section updated.");
+    try {
+      await adminApiClient.saveAbout(aboutForm);
+      setMessage("About section updated.");
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Couldn't save the about section.");
+    }
   }
 
   async function saveContact(event: FormEvent) {
     event.preventDefault();
     setError("");
-    await adminApiClient.saveContactInfo(contactForm);
-    setMessage("Contact section updated.");
+    try {
+      await adminApiClient.saveContactInfo(contactForm);
+      setMessage("Contact section updated.");
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Couldn't save the contact section.");
+    }
   }
 
   if (!loggedIn) {
@@ -494,7 +520,7 @@ export default function AdminDashboard() {
               <p className="mb-2 text-xs font-extrabold uppercase text-wine">{isEditingProduct ? "Editing product" : "New product"}</p>
               <h2 className="font-display text-5xl leading-none max-[620px]:text-4xl max-[380px]:text-3xl">{productForm.title || "Untitled piece"}</h2>
             </div>
-            {isEditingProduct && <button className={`${buttonClass} border border-wine bg-white px-3 py-2 font-bold text-wine hover:bg-wine hover:text-white`} onClick={() => removeProduct(editingProductId)} type="button">Delete</button>}
+            {isEditingProduct && <button className={`${buttonClass} border border-wine bg-white px-3 py-2 font-bold text-wine hover:bg-wine hover:text-white`} onClick={() => window.confirm(`Delete "${productForm.title || "this product"}"? This can't be undone.`) && removeProduct(editingProductId)} type="button">Delete</button>}
           </div>
 
           {(message || error) && <p className={`rounded-md px-3 py-2 text-sm font-bold ${error ? "bg-[#ffe3e3] text-wine" : "bg-mint text-ink"}`}>{error || message}</p>}
@@ -571,7 +597,7 @@ export default function AdminDashboard() {
               <p className="mb-2 text-xs font-extrabold uppercase text-wine">{isEditing ? "Editing project" : "New project"}</p>
               <h2 className="font-display text-5xl leading-none max-[620px]:text-4xl max-[380px]:text-3xl">{form.title || "Untitled knit"}</h2>
             </div>
-            {isEditing && <button className={`${buttonClass} border border-wine bg-white px-3 py-2 font-bold text-wine hover:bg-wine hover:text-white`} onClick={() => removeProject(editingId)} type="button">Delete</button>}
+            {isEditing && <button className={`${buttonClass} border border-wine bg-white px-3 py-2 font-bold text-wine hover:bg-wine hover:text-white`} onClick={() => window.confirm(`Delete "${form.title || "this project"}"? This can't be undone.`) && removeProject(editingId)} type="button">Delete</button>}
           </div>
 
           {(message || error) && <p className={`rounded-md px-3 py-2 text-sm font-bold ${error ? "bg-[#ffe3e3] text-wine" : "bg-mint text-ink"}`}>{error || message}</p>}

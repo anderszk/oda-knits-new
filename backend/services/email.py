@@ -46,7 +46,7 @@ def send_order_email(order: OrderPayload, order_id: str, subtotal: int, created_
     email.set_content(
         f"Order: {order_id}\n"
         f"Received: {created_at}\n"
-        f"Payment method (mock checkout): {order.payment_method}\n\n"
+        f"Payment method: {order.payment_method}\n\n"
         f"Items:\n{lines}\n\n"
         f"Subtotal: {subtotal} kr\n\n"
         f"Ship to:\n{shipping.name}\n{shipping.address}\n{shipping.postal_code} {shipping.city}\n"

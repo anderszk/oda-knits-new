@@ -212,6 +212,7 @@ export default function YarnScene() {
     };
 
     let frame: number;
+    let visible = true;
     const clock = new THREE.Clock();
     const animate = () => {
       const time = clock.getElapsedTime();
@@ -220,12 +221,20 @@ export default function YarnScene() {
       knit.position.y = reduceMotion ? 0 : Math.sin(time * 0.8) * 0.06;
       updateStitches(time);
       renderer.render(scene, camera);
-      frame = requestAnimationFrame(animate);
+      if (visible) frame = requestAnimationFrame(animate);
     };
 
     host.appendChild(renderer.domElement);
     const observer = new ResizeObserver(resize);
     observer.observe(host);
+    // Decorative and continuous — no reason to keep rendering every frame while
+    // scrolled offscreen.
+    const visibilityObserver = new IntersectionObserver(([entry]) => {
+      const wasVisible = visible;
+      visible = entry.isIntersecting;
+      if (visible && !wasVisible) animate();
+    });
+    visibilityObserver.observe(host);
     host.addEventListener("pointerenter", onPointerEnter);
     host.addEventListener("pointerleave", onPointerLeave);
     host.addEventListener("pointermove", onPointerMove);
@@ -237,6 +246,7 @@ export default function YarnScene() {
     return () => {
       cancelAnimationFrame(frame);
       observer.disconnect();
+      visibilityObserver.disconnect();
       host.removeEventListener("pointerenter", onPointerEnter);
       host.removeEventListener("pointerleave", onPointerLeave);
       host.removeEventListener("pointermove", onPointerMove);

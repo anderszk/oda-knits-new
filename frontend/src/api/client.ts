@@ -3,7 +3,10 @@ const API_BASE = import.meta.env.VITE_API_URL || "";
 export class ApiClient {
   async request<T>(path: string, options?: RequestInit): Promise<T> {
     const response = await fetch(`${API_BASE}${path}`, options);
-    if (!response.ok) throw new Error(`Request failed: ${response.status}`);
+    if (!response.ok) {
+      const body = await response.json().catch(() => ({}));
+      throw new Error(body.detail || `Request failed: ${response.status}`);
+    }
     return response.json();
   }
 

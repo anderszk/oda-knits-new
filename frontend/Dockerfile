@@ -3,7 +3,7 @@ FROM node:22-alpine AS dev
 WORKDIR /app
 
 COPY package*.json ./
-RUN npm install
+RUN npm ci
 
 COPY index.html ./
 COPY vite.config.ts tsconfig.json tsconfig.node.json ./

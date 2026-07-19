@@ -28,6 +28,7 @@ export default function CheckoutPage({ onNavigateHome }: CheckoutPageProps) {
     shipping, updateShipping, shippingValid,
     submitting, error, order, placeOrder,
     payWithKlarna, payWithVipps, providers, realPayment,
+    failedPayment, retryOrderConfirmation,
   } = useCheckout();
 
   useEffect(() => {
@@ -157,6 +158,8 @@ export default function CheckoutPage({ onNavigateHome }: CheckoutPageProps) {
                     payWithVipps={payWithVipps}
                     placeOrder={placeOrder}
                     onBack={() => setStep("shipping")}
+                    failedPayment={failedPayment}
+                    retryOrderConfirmation={retryOrderConfirmation}
                   />
                 </motion.div>
               )}
