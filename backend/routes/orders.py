@@ -1,4 +1,3 @@
-import json
 import logging
 import re
 import secrets
@@ -8,7 +7,6 @@ from datetime import UTC, datetime
 import psycopg
 from fastapi import APIRouter, HTTPException, Request
 
-from database.connection import get_connection
 from backend.models.orders import OrderPayload
 from backend.services.email import send_order_email
 from backend.services.payments import call_stripe, call_vipps, validate_and_price
@@ -56,17 +54,7 @@ def create_order(order: OrderPayload, request: Request = None):
     order_id = f"OK-{datetime.now(UTC).strftime('%y%m%d')}-{secrets.token_hex(3).upper()}"
     created_at = datetime.now(UTC).isoformat()
     try:
-        with get_connection() as connection:
-            order_repository.create(
-                order_id,
-                json.dumps([item.model_dump() for item in order.items]),
-                subtotal,
-                json.dumps(order.shipping.model_dump(mode="json")),
-                order.payment_method,
-                order.payment_reference,
-                created_at,
-                connection=connection,
-            )
+        order_repository.create(order_id, order, subtotal, created_at)
     except psycopg.errors.UniqueViolation:
         raise HTTPException(status_code=409, detail="This payment has already been used for an order")
     try:

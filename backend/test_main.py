@@ -22,7 +22,7 @@ from database.connection import get_connection  # noqa: E402
 from backend.models.auth import LoginPayload  # noqa: E402
 from backend.models.contact import ContactMessage  # noqa: E402
 from backend.models.content import AboutPayload, ContactInfoPayload  # noqa: E402
-from backend.models.orders import OrderPayload, PaymentItemsPayload  # noqa: E402
+from backend.models.orders import OrderPayload, PaymentItemsPayload, VippsPaymentPayload  # noqa: E402
 from backend.models.products import ProductPayload  # noqa: E402
 from backend.models.projects import ProjectPayload  # noqa: E402
 from backend.routes.admin import (  # noqa: E402
@@ -39,7 +39,7 @@ from backend.routes.admin import (  # noqa: E402
 from backend.routes.contact import contact  # noqa: E402
 from backend.routes.instagram import get_instagram, instagram_cache  # noqa: E402
 from backend.routes.orders import create_order  # noqa: E402
-from backend.routes.payments import create_card_intent  # noqa: E402
+from backend.routes.payments import create_card_intent, create_vipps_payment, vipps_status  # noqa: E402
 from backend.repositories import product_repository, project_repository  # noqa: E402
 from backend.services.email import send_contact_email  # noqa: E402
 from backend.services.security import admin_tokens, rate_limits, require_admin  # noqa: E402
@@ -292,6 +292,78 @@ class ContactTest(unittest.TestCase):
 
         self.assertEqual(result["client_secret"], "secret_abc123")
         self.assertEqual(result["subtotal"], product["price"])
+
+    def test_vipps_payment_returns_redirect_url(self):
+        product = self._make_product()
+        payload = VippsPaymentPayload(items=[{
+            "id": product["id"],
+            "title": product["title"],
+            "price": product["price"],
+            "size": product["sizes"][0],
+            "quantity": 1,
+        }], return_url="http://localhost:5173/checkout?vipps_return=1")
+
+        with (
+            patch("backend.routes.payments.VIPPS_CONFIGURED", True),
+            patch("backend.routes.payments.call_vipps", return_value={"redirectUrl": "https://vipps.example/pay"}),
+        ):
+            result = create_vipps_payment(payload)
+
+        self.assertEqual(result["redirect_url"], "https://vipps.example/pay")
+        self.assertEqual(result["subtotal"], product["price"])
+        self.assertTrue(result["reference"].startswith("OK-"))
+
+    def test_vipps_payment_rejects_invalid_return_url(self):
+        product = self._make_product()
+        payload = VippsPaymentPayload(items=[{
+            "id": product["id"],
+            "title": product["title"],
+            "price": product["price"],
+            "size": product["sizes"][0],
+            "quantity": 1,
+        }], return_url="https://evil.example.com/checkout")
+
+        with patch("backend.routes.payments.VIPPS_CONFIGURED", True):
+            with self.assertRaises(HTTPException) as caught:
+                create_vipps_payment(payload)
+
+        self.assertEqual(caught.exception.status_code, 400)
+
+    def test_vipps_status_returns_state(self):
+        with (
+            patch("backend.routes.payments.VIPPS_CONFIGURED", True),
+            patch("backend.routes.payments.call_vipps", return_value={"state": "AUTHORIZED"}),
+        ):
+            result = vipps_status(reference="OK-250718-abcdef123456")
+
+        self.assertEqual(result["state"], "AUTHORIZED")
+
+    def test_create_order_succeeds_with_verified_vipps_payment(self):
+        product = self._make_product()
+        order = self._make_order_payload(product, payment_method="Vipps", payment_reference="OK-250718-abcdef123456")
+
+        with (
+            patch("backend.routes.orders.call_vipps", return_value={
+                "state": "AUTHORIZED", "amount": {"value": product["price"] * 100},
+            }),
+            patch("backend.routes.orders.send_order_email"),
+        ):
+            result = create_order(order)
+
+        self.assertTrue(result["ok"])
+        self.assertEqual(result["subtotal"], product["price"])
+
+    def test_create_order_rejects_unverified_vipps_payment(self):
+        product = self._make_product()
+        order = self._make_order_payload(product, payment_method="Vipps", payment_reference="OK-250718-abcdef123456")
+
+        with patch("backend.routes.orders.call_vipps", return_value={
+            "state": "CREATED", "amount": {"value": product["price"] * 100},
+        }):
+            with self.assertRaises(HTTPException) as caught:
+                create_order(order)
+
+        self.assertEqual(caught.exception.status_code, 402)
 
     def test_admin_product_crud(self):
         created = create_product(ProductPayload(
